@@ -414,16 +414,6 @@ if (!Array.prototype.findIndex) {
                 imageObj.src = image._image.src;
             }
 
-            var eventDetails = {
-                "detail": {
-                    "comment": {
-                        "id": comment.id,
-                    },
-                }
-            };
-            event = new CustomEvent("editCommentStart", eventDetails);
-            document.dispatchEvent(event);
-
             return comment;
         },
 

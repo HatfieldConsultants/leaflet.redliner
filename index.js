@@ -300,7 +300,6 @@ if (!Array.prototype.findIndex) {
                     var commentEdit = L.DomUtil.create('a', 'edit-button', commentItem);
 
                     var image;
-                    console.log(comment.getLayers());
                     comment.getLayers().forEach(function (layer) {
                         if (layer.layerType == 'drawing') {
                             image = layer;
@@ -384,7 +383,6 @@ if (!Array.prototype.findIndex) {
             // trigger drawing mode
             if (options) {
                 self.root.startDrawingMode(comment, options);
-                console.log(image._image.width, image._image.height);
             } else {
                 self.root.startDrawingMode(comment);
             }
@@ -414,16 +412,6 @@ if (!Array.prototype.findIndex) {
                 imageObj.src = image._image.src;
             }
 
-            var eventDetails = {
-                "detail": {
-                    "comment": {
-                        "id": comment.id,
-                    },
-                }
-            };
-            event = new CustomEvent("editCommentStart", eventDetails);
-            document.dispatchEvent(event);
-
             return comment;
         },
 
@@ -437,7 +425,7 @@ if (!Array.prototype.findIndex) {
             }
 
             if (options && options.textSave) {
-                console.log('saving text, so special case');
+                // saving text, so special case
             } else {
                 comment.zoomLevel = self.root.ownMap.getZoom();
                 // SAVING LOGIC
@@ -619,7 +607,7 @@ if (!Array.prototype.findIndex) {
 
             if (index) {
                 self.list[index.index] = comment;
-                console.log('updating a comment');
+                // updating a comment
             } else {
                 self.list.push(comment);
             }
@@ -919,7 +907,7 @@ if (!Array.prototype.findIndex) {
                 var canvas = self.root.drawingCanvas._container;
                 var context = canvas.getContext('2d');
                 var comment = self.root.Comments.editingComment;
-                var image;
+                var imconage;
                 var id;
                 var textBox;
                 var marker;
@@ -1075,7 +1063,6 @@ if (!Array.prototype.findIndex) {
                         comment.removeLayer(newTextImageOverlay);
                         comment.textLayerGroup.removeLayer(marker);
                         newTextImageOverlay.removeFrom(self.root.ownMap);
-                        console.log(comment);
                     }
                 });
 

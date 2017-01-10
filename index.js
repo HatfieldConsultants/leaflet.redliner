@@ -1183,6 +1183,13 @@ if (!Array.prototype.findIndex) {
                 console.log('finished editing a comment');
             }, false);
 
+            // listen for events emitted by Network module
+            self.root.ownMap._container.addEventListener('remote-new-comment-created', function (e) {
+                console.log('new comment created by another client');
+            }, false);
+
+            // etc ....
+
             console.log('listeners set');
         }
     };

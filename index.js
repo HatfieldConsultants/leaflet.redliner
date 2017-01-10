@@ -145,7 +145,7 @@ if (!Array.prototype.findIndex) {
             } else {
                 self.Tools.on();
             }
-        },
+        }, 
 
         stopDrawingMode: function () {
             var self = this;

@@ -60,6 +60,9 @@ if (!Array.prototype.findIndex) {
             self.Comments.root = self;
             self.Util.root = self;
             self.Tools.root = self;
+            self.Events.root = self;
+
+            self.Events.initializeListeners();
 
             self.currentMode = 'map';
             var customControl = L.Control.extend({
@@ -412,6 +415,16 @@ if (!Array.prototype.findIndex) {
                 imageObj.src = image._image.src;
             }
 
+            try {
+                var event = new Event('comment-edit-start');
+            }
+            catch(err) {
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("comment-edit-start", true, false, { detail: {} });
+            }     
+            // Dispatch the event.
+            self.root.ownMap._container.dispatchEvent(event);
+
             return comment;
         },
 
@@ -521,6 +534,30 @@ if (!Array.prototype.findIndex) {
                 });
                 self.editComment(comment, image);
             }
+
+            if (isNew) {
+                try {
+                    var event = new Event('new-comment-saved');
+                }
+                catch(err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("new-comment-saved", true, false, { detail: {} });
+                }     
+                // Dispatch the event.
+                self.root.ownMap._container.dispatchEvent(event);
+
+            } else {
+                try {
+                    var event = new Event('comment-edit-end');
+                }
+                catch(err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("comment-edit-end", true, false, { detail: {} });
+                }     
+                // Dispatch the event.
+                self.root.ownMap._container.dispatchEvent(event);
+            }
+
             return comment;
         },
 
@@ -610,6 +647,16 @@ if (!Array.prototype.findIndex) {
                 // updating a comment
             } else {
                 self.list.push(comment);
+                try {
+                    var event = new Event('new-comment-created');
+                }
+                catch(err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("new-comment-created", true, false, { detail: {} });
+                }     
+                // Dispatch the event.
+                self.root.ownMap._container.dispatchEvent(event);
+
             }
 
             if (self.root.currentMode != 'drawing') {
@@ -1119,7 +1166,33 @@ if (!Array.prototype.findIndex) {
             }
         }
     };
+    Redliner.Events = {
+        initializeListeners: function() {
+            var self = this;
 
+            self.root.ownMap._container.addEventListener('new-comment-created', function (e) {
+                console.log('new comment created');
+            }, false);
+            self.root.ownMap._container.addEventListener('new-comment-saved', function (e) {
+                console.log('new comment saved');
+            }, false);
+            self.root.ownMap._container.addEventListener('comment-edit-start', function (e) {
+                console.log('started editing a comment');
+            }, false);
+            self.root.ownMap._container.addEventListener('comment-edit-end', function (e) {
+                console.log('finished editing a comment');
+            }, false);
+
+            // listen for events emitted by Network module
+            self.root.ownMap._container.addEventListener('remote-new-comment-created', function (e) {
+                console.log('new comment created by another client');
+            }, false);
+
+            // etc ....
+
+            console.log('listeners set');
+        }
+    };
     // return your plugin when you are done
     return Redliner;
 }, window));

@@ -840,6 +840,12 @@ if (!Array.prototype.findIndex) {
                         self.stroke = true;
                     }
                 });
+                canvas.addEventListener('touchstart', function () {
+                    if (self.root.Tools.currentTool == 'pen') {
+                        self.stroke = true;
+                    }
+                    console.log('touch start');
+                });
 
                 canvas.addEventListener('mousemove', function (e) {
                     if (self.stroke && self.root.Tools.currentTool == 'pen') {
@@ -849,6 +855,15 @@ if (!Array.prototype.findIndex) {
                         self.drawLine(context, self.mouseX, self.mouseY, 3);
                     }
                 }, false);
+                canvas.addEventListener('touchmove', function (e) {
+                    if (self.stroke && self.root.Tools.currentTool == 'pen') {
+                        var pos = self.root.Util.getMousePos(e.touches[0].clientX, e.touches[0].clientY);
+                        self.mouseX = pos.x;
+                        self.mouseY = pos.y;
+                        self.drawLine(context, self.mouseX, self.mouseY, 3);
+                    }
+                    console.log('touchmove');
+                }, false);
 
                 window.addEventListener('mouseup', function (e) {
                     if (self.stroke && self.root.Tools.currentTool == 'pen') {
@@ -857,6 +872,15 @@ if (!Array.prototype.findIndex) {
                         self.lastX = -1;
                         self.lastY = -1;
                     }
+                }, false);
+                window.addEventListener('touchend', function (e) {
+                    if (self.stroke && self.root.Tools.currentTool == 'pen') {
+                        self.stroke = false;
+                        // Reset lastX and lastY to -1 to indicate that they are now invalid, since we have lifted the "pen"
+                        self.lastX = -1;
+                        self.lastY = -1;
+                    }
+                    console.log('touch end');
                 }, false);
             }
         },

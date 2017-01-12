@@ -61,52 +61,11 @@ if (!Array.prototype.findIndex) {
             self.Util.root = self;
             self.Tools.root = self;
             self.Events.root = self;
+            self.GUI.root = self;
 
             self.Events.initializeListeners();
 
             self.currentMode = 'map';
-            var customControl = L.Control.extend({
-                options: {
-                    position: 'topleft'
-                    //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
-                },
-
-                onAdd: function (map) {
-                    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-                    container.style.backgroundColor = 'white';
-                    container.style.width = '40px';
-                    container.style.height = '40px';
-                    container.style.cursor = 'pointer';
-                    container.innerHTML = '<img src="assets/pencil.png" class="panel-control-icon">'; // this is temporary...
-                    container.onclick = function () {
-                        self.ControlBar.toggle();
-                    };
-
-                    return container;
-                },
-            });
-            map.addControl(new customControl());
-
-            var visibileClass = (self.ControlBar.isVisible()) ? 'visible' : '';
-
-            // decide control bar position
-
-            self.ControlBar.options.position = (window.innerHeight < window.innerWidth) ? 'right' : 'bottom';
-
-            // Create sidebar container
-            var container = self.ControlBar._container =
-              L.DomUtil.create('div', 'leaflet-control-bar-' + self.ControlBar.options.position + ' leaflet-control-bar ' + visibileClass);
-
-            var content = self.ControlBar._contentContainer;
-
-            L.DomEvent
-              .on(container, 'transitionend',
-                self.ControlBar._handleTransitionEvent, self)
-              .on(container, 'webkitTransitionEnd',
-                self.ControlBar._handleTransitionEvent, self);
-
-            var controlContainer = map._controlContainer;
-            controlContainer.insertBefore(container, controlContainer.firstChild);
 
             self.mergeCanvas = document.createElement('canvas');
             self._map = map;
@@ -127,8 +86,6 @@ if (!Array.prototype.findIndex) {
 
             // set mode to "drawing"
             self.currentMode = 'drawing';
-            // set toolbar view to "drawing"
-            self.ControlBar.currentView = self.ControlBar.displayControl('drawing', comment);
 
             // Remove all comment layer groups from map
             self.Comments.list.forEach(function (_comment) {
@@ -152,8 +109,6 @@ if (!Array.prototype.findIndex) {
 
             // set mode to "drawing"
             self.currentMode = 'controlBarHome';
-            // set toolbar view to "drawing"
-            self.ControlBar.currentView = self.ControlBar.displayControl('home');
 
             // turn off all drawing tools
             self.Tools.off();
@@ -167,7 +122,198 @@ if (!Array.prototype.findIndex) {
 
             self.drawingCanvas.removeFrom(map);
             delete self.drawingCanvas;
-        }
+        },
+
+        startNewComment: function() {
+            var self = this;
+
+            // create new comment
+            var newComment = self.Comments.newComment();
+
+            // trigger drawing mode
+            self.startDrawingMode(newComment);
+
+            return newComment;            
+        },
+
+
+        saveDrawing: function (comment, options) {
+            var self = this;
+            var isNew = !comment.saveState;
+
+            // prompt for title saving...
+            if (!comment.saveState) {
+                comment.name = prompt("Please name your note", "Note") || "Untitled Note";
+            }
+
+            if (options && options.textSave) {
+                // saving text, so special case
+            } else {
+                comment.zoomLevel = self.ownMap.getZoom();
+                // SAVING LOGIC
+                var context = self.drawingCanvas._ctx;
+                var canvas = context.canvas;
+
+                var canvasDrawing = canvas.toDataURL("data:image/png");
+
+                var imageBoundsXY = self.drawingCanvas._bounds;
+                var imageBoundsMinCoord = self.ownMap.layerPointToLatLng(imageBoundsXY.min);
+                var imageBoundsMaxCoord = self.ownMap.layerPointToLatLng(imageBoundsXY.max);
+                var imageBounds = [
+                  [imageBoundsMinCoord.lat, imageBoundsMinCoord.lng],
+                  [imageBoundsMaxCoord.lat, imageBoundsMaxCoord.lng]
+                ];
+                var drawing = L.imageOverlay(canvasDrawing, imageBounds);
+                drawing.layerType = 'drawing';
+                var oldDrawing;
+                if (comment.saveState) {
+                    comment.getLayers().forEach(function (layer) {
+                        if (layer.layerType == 'drawing') {
+                            comment.removeLayer(layer);
+                            oldDrawing = layer;
+                        }
+                    });
+                }
+
+                comment.addLayer(drawing);
+
+                if (oldDrawing) {
+                    var mergeCanvas = self.mergeCanvas;
+                    document.body.appendChild(canvas);
+                    var mergeContext = mergeCanvas.getContext('2d');
+
+                    var newX_left = self.ownMap.latLngToLayerPoint(self.ownMap.getBounds()._southWest).x;
+                    var newX_right = self.ownMap.latLngToLayerPoint(self.ownMap.getBounds()._northEast).x;
+                    var newY_top = self.ownMap.latLngToLayerPoint(self.ownMap.getBounds()._northEast).y;
+                    var newY_bottom = self.ownMap.latLngToLayerPoint(self.ownMap.getBounds()._southWest).y;
+                    var oldX_left = self.ownMap.latLngToLayerPoint(oldDrawing._bounds._southWest).x;
+                    var oldX_right = self.ownMap.latLngToLayerPoint(oldDrawing._bounds._northEast).x;
+                    var oldY_top = self.ownMap.latLngToLayerPoint(oldDrawing._bounds._northEast).y;
+                    var oldY_bottom = self.ownMap.latLngToLayerPoint(oldDrawing._bounds._southWest).y;
+
+                    var leftMost = Math.min(newX_left, oldX_left);
+                    var rightMost = Math.max(newX_right, oldX_right);
+                    var topMost = Math.min(newY_top, oldY_top);
+                    var bottomMost = Math.max(newY_bottom, oldY_bottom);
+
+                    mergeCanvas.height = bottomMost - topMost;
+                    mergeCanvas.width = rightMost - leftMost;
+
+                    var oldImageToCanvas = new Image();
+                    var newImageToCanvas = new Image();
+                    var mergedDrawingLayer;
+                    var newSouthWest = self.ownMap.layerPointToLatLng([leftMost, bottomMost]);
+                    var newNorthEast = self.ownMap.layerPointToLatLng([rightMost, topMost]);
+
+                    oldImageToCanvas.onload = function () {
+                        mergeContext.drawImage(oldImageToCanvas, oldX_left - leftMost, oldY_top - topMost, oldX_right - oldX_left, oldY_bottom - oldY_top);
+                        newImageToCanvas.src = canvasDrawing;
+                    };
+                    newImageToCanvas.onload = function () {
+                        // to make the eraser tool work...
+                        mergeContext.globalCompositeOperation = "destination-out";
+                        mergeContext.fillStyle = "white";
+                        mergeContext.fillRect(newX_left - leftMost, newY_top - topMost, newX_right - newX_left, newY_bottom - newY_top);
+
+                        mergeContext.globalCompositeOperation = "source-over";
+                        mergeContext.drawImage(newImageToCanvas, newX_left - leftMost, newY_top - topMost, newX_right - newX_left, newY_bottom - newY_top);
+                        var mergedDrawing = mergeCanvas.toDataURL("data:image/png");
+                        comment.removeLayer(drawing);
+                        mergedDrawingLayer = L.imageOverlay(mergedDrawing, [newSouthWest, newNorthEast]);
+                        comment.addLayer(mergedDrawingLayer);
+                        mergedDrawingLayer.layerType = 'drawing';
+                    };
+
+                    oldImageToCanvas.src = oldDrawing._url;
+
+                }
+            }
+
+            self.stopDrawingMode();
+
+            comment.saveState = true;
+
+            // something might be wrong in here
+            if (options && options.textSave) {
+                var image;
+                comment.getLayers().forEach(function (layer) {
+                    if (layer.layerType == 'drawing') {
+                        image = layer;
+                    }
+                });
+                self.editComment(comment, image);
+            }
+
+            if (isNew) {
+                try {
+                    var event = new Event('new-comment-saved');
+                }
+                catch(err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("new-comment-saved", true, false, { detail: {} });
+                }     
+                // Dispatch the event.
+                self.ownMap._container.dispatchEvent(event);
+
+            } else {
+                try {
+                    var event = new Event('comment-edit-end');
+                }
+                catch(err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("comment-edit-end", true, false, { detail: {} });
+                }     
+                // Dispatch the event.
+                self.ownMap._container.dispatchEvent(event);
+            }
+
+            return comment;
+        },
+
+        editComment: function (comment, image, options) {
+            var self = this;
+            // fly to comment
+            //map.flyToBounds(image._bounds, {animate: false});
+
+            // trigger drawing mode
+            if (options) {
+                self.startDrawingMode(comment, options);
+            } else {
+                self.startDrawingMode(comment);
+            }
+            self.Comments.editingComment = comment;
+            var canvas = self.drawingCanvas._container;
+            var context = canvas.getContext('2d');
+            var canvasTransformArray;
+
+            canvasTransformArray = canvas.style.transform.split(/,|\(|\)|px| /);
+
+            if (image) {
+                var imageObj = new Image();
+
+                var newWidth = image._image.width * self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.zoomLevel);
+                var newHeight = image._image.height * self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.zoomLevel);
+
+                imageObj.onload = function () {
+                    context.drawImage(imageObj, image._image._leaflet_pos.x, image._image._leaflet_pos.y, newWidth, newHeight);
+                };
+
+                imageObj.src = image._image.src;
+            }
+
+            try {
+                var event = new Event('comment-edit-start');
+            }
+            catch(err) {
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("comment-edit-start", true, false, { detail: {} });
+            }     
+            // Dispatch the event.
+            self.ownMap._container.dispatchEvent(event);
+
+            return comment;
+        },        
+
     };
 
     Redliner.ControlBar = {
@@ -328,42 +474,6 @@ if (!Array.prototype.findIndex) {
             var br = L.DomUtil.create('br', '', drawingView);
 
             var toolbox = L.DomUtil.create('div', 'toolbox', drawingView);
-
-            var redPenSelectButton = L.DomUtil.create('img', 'tool', toolbox);
-            redPenSelectButton.src = 'assets/red-pen.png';
-            redPenSelectButton.onclick = function () {
-                self.root.Tools.setCurrentTool('pen', {
-                    colour: 'red'
-                });
-            };
-
-            var yellowPenSelectButton = L.DomUtil.create('img', 'tool', toolbox);
-            yellowPenSelectButton.src = 'assets/yellow-pen.png';
-            yellowPenSelectButton.onclick = function () {
-                self.root.Tools.setCurrentTool('pen', {
-                    colour: 'yellow'
-                });
-            };
-
-            var blackPenSelectButton = L.DomUtil.create('img', 'tool', toolbox);
-            blackPenSelectButton.src = 'assets/black-pen.png';
-            blackPenSelectButton.onclick = function () {
-                self.root.Tools.setCurrentTool('pen', {
-                    colour: 'black'
-                });
-            };
-
-            var eraserSelectButton = L.DomUtil.create('img', 'tool', toolbox);
-            eraserSelectButton.src = 'assets/eraser.png';
-            eraserSelectButton.onclick = function () {
-                self.root.Tools.setCurrentTool('eraser');
-            };
-
-            var textSelectButton = L.DomUtil.create('img', 'tool', toolbox);
-            textSelectButton.src = 'assets/text.png';
-            textSelectButton.onclick = function () {
-                self.root.Tools.setCurrentTool('text');
-            };
         },
 
         startNewComment: function () {
@@ -376,189 +486,6 @@ if (!Array.prototype.findIndex) {
             self.root.startDrawingMode(newComment);
 
             return newComment;
-        },
-
-        editComment: function (comment, image, options) {
-            var self = this;
-            // fly to comment
-            //map.flyToBounds(image._bounds, {animate: false});
-
-            // trigger drawing mode
-            if (options) {
-                self.root.startDrawingMode(comment, options);
-            } else {
-                self.root.startDrawingMode(comment);
-            }
-            self.root.Comments.editingComment = comment;
-            var canvas = self.root.drawingCanvas._container;
-            var context = canvas.getContext('2d');
-            var canvasTransformArray;
-
-            // for phantomJS
-            if (self.root.PHANTOMTEST) {
-                canvasTransformArray = [0, 0];
-            } else {
-                canvasTransformArray = canvas.style.transform.split(/,|\(|\)|px| /);
-            }
-
-
-            if (image) {
-                var imageObj = new Image();
-
-                var newWidth = image._image.width * self.root.ownMap.getZoomScale(self.root.ownMap.getZoom(), comment.zoomLevel);
-                var newHeight = image._image.height * self.root.ownMap.getZoomScale(self.root.ownMap.getZoom(), comment.zoomLevel);
-
-                imageObj.onload = function () {
-                    context.drawImage(imageObj, image._image._leaflet_pos.x, image._image._leaflet_pos.y, newWidth, newHeight);
-                };
-
-                imageObj.src = image._image.src;
-            }
-
-            try {
-                var event = new Event('comment-edit-start');
-            }
-            catch(err) {
-                var event = document.createEvent("CustomEvent");
-                event.initCustomEvent("comment-edit-start", true, false, { detail: {} });
-            }     
-            // Dispatch the event.
-            self.root.ownMap._container.dispatchEvent(event);
-
-            return comment;
-        },
-
-        saveDrawing: function (comment, options) {
-            var self = this;
-            var isNew = !comment.saveState;
-
-            // prompt for title saving...
-            if (!comment.saveState) {
-                comment.name = prompt("Please name your note", "Note") || "Note";
-            }
-
-            if (options && options.textSave) {
-                // saving text, so special case
-            } else {
-                comment.zoomLevel = self.root.ownMap.getZoom();
-                // SAVING LOGIC
-                var context = self.root.drawingCanvas._ctx;
-                var canvas = context.canvas;
-
-                var canvasDrawing = canvas.toDataURL("data:image/png");
-
-                var imageBoundsXY = self.root.drawingCanvas._bounds;
-                var imageBoundsMinCoord = self.root.ownMap.layerPointToLatLng(imageBoundsXY.min);
-                var imageBoundsMaxCoord = self.root.ownMap.layerPointToLatLng(imageBoundsXY.max);
-                var imageBounds = [
-                  [imageBoundsMinCoord.lat, imageBoundsMinCoord.lng],
-                  [imageBoundsMaxCoord.lat, imageBoundsMaxCoord.lng]
-                ];
-                var drawing = L.imageOverlay(canvasDrawing, imageBounds);
-                drawing.layerType = 'drawing';
-                var oldDrawing;
-                if (comment.saveState) {
-                    comment.getLayers().forEach(function (layer) {
-                        if (layer.layerType == 'drawing') {
-                            comment.removeLayer(layer);
-                            oldDrawing = layer;
-                        }
-                    });
-                }
-
-                comment.addLayer(drawing);
-
-                if (oldDrawing) {
-                    var mergeCanvas = self.root.mergeCanvas;
-                    document.body.appendChild(canvas);
-                    var mergeContext = mergeCanvas.getContext('2d');
-
-                    var newX_left = self.root.ownMap.latLngToLayerPoint(self.root.ownMap.getBounds()._southWest).x;
-                    var newX_right = self.root.ownMap.latLngToLayerPoint(self.root.ownMap.getBounds()._northEast).x;
-                    var newY_top = self.root.ownMap.latLngToLayerPoint(self.root.ownMap.getBounds()._northEast).y;
-                    var newY_bottom = self.root.ownMap.latLngToLayerPoint(self.root.ownMap.getBounds()._southWest).y;
-                    var oldX_left = self.root.ownMap.latLngToLayerPoint(oldDrawing._bounds._southWest).x;
-                    var oldX_right = self.root.ownMap.latLngToLayerPoint(oldDrawing._bounds._northEast).x;
-                    var oldY_top = self.root.ownMap.latLngToLayerPoint(oldDrawing._bounds._northEast).y;
-                    var oldY_bottom = self.root.ownMap.latLngToLayerPoint(oldDrawing._bounds._southWest).y;
-
-                    var leftMost = Math.min(newX_left, oldX_left);
-                    var rightMost = Math.max(newX_right, oldX_right);
-                    var topMost = Math.min(newY_top, oldY_top);
-                    var bottomMost = Math.max(newY_bottom, oldY_bottom);
-
-                    mergeCanvas.height = bottomMost - topMost;
-                    mergeCanvas.width = rightMost - leftMost;
-
-                    var oldImageToCanvas = new Image();
-                    var newImageToCanvas = new Image();
-                    var mergedDrawingLayer;
-                    var newSouthWest = self.root.ownMap.layerPointToLatLng([leftMost, bottomMost]);
-                    var newNorthEast = self.root.ownMap.layerPointToLatLng([rightMost, topMost]);
-
-                    oldImageToCanvas.onload = function () {
-                        mergeContext.drawImage(oldImageToCanvas, oldX_left - leftMost, oldY_top - topMost, oldX_right - oldX_left, oldY_bottom - oldY_top);
-                        newImageToCanvas.src = canvasDrawing;
-                    };
-                    newImageToCanvas.onload = function () {
-                        // to make the eraser tool work...
-                        mergeContext.globalCompositeOperation = "destination-out";
-                        mergeContext.fillStyle = "white";
-                        mergeContext.fillRect(newX_left - leftMost, newY_top - topMost, newX_right - newX_left, newY_bottom - newY_top);
-
-                        mergeContext.globalCompositeOperation = "source-over";
-                        mergeContext.drawImage(newImageToCanvas, newX_left - leftMost, newY_top - topMost, newX_right - newX_left, newY_bottom - newY_top);
-                        var mergedDrawing = mergeCanvas.toDataURL("data:image/png");
-                        comment.removeLayer(drawing);
-                        mergedDrawingLayer = L.imageOverlay(mergedDrawing, [newSouthWest, newNorthEast]);
-                        comment.addLayer(mergedDrawingLayer);
-                        mergedDrawingLayer.layerType = 'drawing';
-                    };
-
-                    oldImageToCanvas.src = oldDrawing._url;
-
-                }
-            }
-
-            self.root.stopDrawingMode();
-
-            comment.saveState = true;
-
-            // something might be wrong in here
-            if (options && options.textSave) {
-                var image;
-                comment.getLayers().forEach(function (layer) {
-                    if (layer.layerType == 'drawing') {
-                        image = layer;
-                    }
-                });
-                self.editComment(comment, image);
-            }
-
-            if (isNew) {
-                try {
-                    var event = new Event('new-comment-saved');
-                }
-                catch(err) {
-                    var event = document.createEvent("CustomEvent");
-                    event.initCustomEvent("new-comment-saved", true, false, { detail: {} });
-                }     
-                // Dispatch the event.
-                self.root.ownMap._container.dispatchEvent(event);
-
-            } else {
-                try {
-                    var event = new Event('comment-edit-end');
-                }
-                catch(err) {
-                    var event = document.createEvent("CustomEvent");
-                    event.initCustomEvent("comment-edit-end", true, false, { detail: {} });
-                }     
-                // Dispatch the event.
-                self.root.ownMap._container.dispatchEvent(event);
-            }
-
-            return comment;
         },
 
         cancelDrawing: function (commentId) {
@@ -587,6 +514,7 @@ if (!Array.prototype.findIndex) {
         newComment: function (loadedComment, index) {
             var self = this;
             var comment = L.layerGroup();
+            comment.name = "Untitled Note";
             comment.textLayerGroup = L.layerGroup();
 
             if (loadedComment) {
@@ -659,10 +587,7 @@ if (!Array.prototype.findIndex) {
 
             }
 
-            if (self.root.currentMode != 'drawing') {
-                self.root.ControlBar.displayControl('home');
-            }
-
+            self.root.Comments.mostRecentUsedComment = comment;
             return comment;
         }
     };
@@ -756,7 +681,7 @@ if (!Array.prototype.findIndex) {
                     self.root.Tools.on();
                     self.root.Comments.editingComment.addTo(self.root.ownMap);
                     // save everything (with options)
-                    self.root.ControlBar.saveDrawing(self.root.Comments.editingComment, { textSave: true });
+                    self.root.saveDrawing(self.root.Comments.editingComment, { textSave: true });
                 };
                 canvas.addEventListener('click', clickCanvasEndText, false);
             }
@@ -1018,7 +943,7 @@ if (!Array.prototype.findIndex) {
                         marker.addTo(comment.textLayerGroup);
                         marker.addTo(self.root.ownMap);
                         marker.layerType = 'textAreaMarker';
-                        self.root.ControlBar.saveDrawing(comment);
+                        self.root.saveDrawing(comment);
                         self.root.ownMap.setView(marker._latlng, map.getZoom(), { animate: false });
                         self.root.ownMap.panBy([200, 150], { animate: false });
 
@@ -1031,7 +956,7 @@ if (!Array.prototype.findIndex) {
                             }
                         });
 
-                        self.root.ControlBar.editComment(comment, image, { addText: true, textAreaMarker: marker });
+                        self.root.editComment(comment, image, { addText: true, textAreaMarker: marker });
                         self.root.Tools.setCurrentTool('text', { listeners: false });
                         textBox = document.getElementById(id);
                         textBox.focus();
@@ -1152,7 +1077,7 @@ if (!Array.prototype.findIndex) {
                     if (self.root.Tools.currentTool == 'text') {
                         L.DomUtil.removeClass(newTextImageOverlay._image, 'text-hover-edit');
 
-                        self.root.ControlBar.saveDrawing(comment);
+                        self.root.saveDrawing(comment);
                         self.root.ownMap.setView(marker._latlng, marker.textZoomLevel, { animate: false });
                         self.root.ownMap.panBy([200, 150], { animate: false });
 
@@ -1194,17 +1119,34 @@ if (!Array.prototype.findIndex) {
         initializeListeners: function() {
             var self = this;
 
+            var fireUpdateCommentListViewEvent = function() {
+                try {
+                    var event = new Event('comment-list-refresh');
+                }
+                catch(err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("comment-list-refresh", true, false, { detail: {} });
+                }     
+                // Dispatch the event.
+                window.dispatchEvent(event);
+
+            }
+
             self.root.ownMap._container.addEventListener('new-comment-created', function (e) {
                 console.log('new comment created');
+                fireUpdateCommentListViewEvent();
             }, false);
             self.root.ownMap._container.addEventListener('new-comment-saved', function (e) {
                 console.log('new comment saved');
+                fireUpdateCommentListViewEvent();                
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-start', function (e) {
                 console.log('started editing a comment');
+                fireUpdateCommentListViewEvent();                
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-end', function (e) {
                 console.log('finished editing a comment');
+                fireUpdateCommentListViewEvent();                
             }, false);
 
             // listen for events emitted by Network module
@@ -1217,6 +1159,119 @@ if (!Array.prototype.findIndex) {
             console.log('listeners set');
         }
     };
+
+    Redliner.GUI = {
+        // using leaflet.panel-manager
+
+        loadPanels: function() {
+            var self = this;
+            var guiSpecification = {}
+            guiSpecification.panels = [];
+
+            // Tool panel (3 colours of pens, eraser, and text tool)
+
+            var toolPanel = {
+                type: "button-list",
+                position: "right",
+                toggleHide: "button",
+                title: "Drawing Tools",
+                toggleIcon: "assets/pencil.png",
+                toggleOnCallback: function() {
+                    self.root.startNewComment();
+                    self.root.ownMap.dragging.disable();
+                    self.root.ownMap.touchZoom.disable();
+                    self.root.ownMap.doubleClickZoom.disable();
+                    self.root.ownMap.scrollWheelZoom.disable();
+                    self.root.ownMap.boxZoom.disable();
+                    self.root.ownMap.keyboard.disable();
+                    if (self.root.ownMap.tap) {
+                        self.root.ownMap.tap.disable();
+                    }
+                    document.getElementById('map').style.cursor = 'default';
+                },
+                toggleOffCallback: function() {
+                    self.root.saveDrawing(self.root.Comments.mostRecentUsedComment, { closeSave: true });
+                    self.root.ownMap.dragging.enable();
+                    self.root.ownMap.touchZoom.enable();
+                    self.root.ownMap.doubleClickZoom.enable();
+                    self.root.ownMap.scrollWheelZoom.enable();
+                    self.root.ownMap.boxZoom.enable();
+                    self.root.ownMap.keyboard.enable();
+                    if (self.root.ownMap.tap) {
+                        self.root.ownMap.tap.enable();
+                    }
+                    document.getElementById('map').style.cursor = 'grab';
+                },
+                buttons: [
+                    {
+                        name: "red pen",
+                        icon: "assets/red-pen.png",
+                        callback: function() {
+                            self.root.Tools.setCurrentTool('pen', {
+                                colour: 'red'
+                            });
+                        }
+                    },
+                    {
+                        name: "black pen",
+                        icon: "assets/black-pen.png",
+                        callback: function() {
+                            self.root.Tools.setCurrentTool('pen', {
+                                colour: 'black'
+                            });
+                        }                        
+                    },
+                    {
+                        name: "yellow pen",
+                        icon: "assets/yellow-pen.png",
+                        callback: function() {
+                            self.root.Tools.setCurrentTool('pen', {
+                                colour: 'yellow'
+                            });
+                        }                        
+                    },
+                    {
+                        name: "eraser",
+                        icon: "assets/eraser.png",
+                        callback: function() {
+                            self.root.Tools.setCurrentTool('eraser');
+                        }
+                    },
+                    {
+                        name: "text",
+                        icon: "assets/text.png",
+                        callback: function() {
+                            self.root.Tools.setCurrentTool('text');
+                        }
+                    }
+                ]
+            }
+
+            guiSpecification.panels.push(toolPanel);
+
+            var commentPanel = {
+                type: "document-list",
+                position: "right",
+                title: "Comments",
+                toggleHide: true,
+                eventName: "comment-list-refresh",
+                documentSource: self.root.Comments.list,
+                documentActions: [
+                    {
+                        name: "Edit"
+                    },
+                    {
+                        name: "Delete"
+                    }
+                ]
+            }
+            guiSpecification.panels.push(commentPanel);
+
+            return guiSpecification;
+        }
+
+    };
+
     // return your plugin when you are done
     return Redliner;
 }, window));

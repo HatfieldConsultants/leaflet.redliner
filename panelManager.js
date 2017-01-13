@@ -230,7 +230,8 @@
                 if (specPanel.type == "button-list") {
                     specPanel.buttons.forEach(function(specButton) {
                         var button = L.DomUtil.create('button', 'panelmanager-panel-button');
-                        button.style.background = "url(" + specButton.icon + ") no-repeat"
+                        button.style.background = "url(" + specButton.icon + ") no-repeat";
+                        button.style.backgroundSize = "100% 100%";
                         if (specButton.callback) {
                             L.DomEvent.on(button, 'click',
                                 specButton.callback, self);                        

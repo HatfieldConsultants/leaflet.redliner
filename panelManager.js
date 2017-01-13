@@ -236,7 +236,7 @@
                             L.DomEvent.on(button, 'click',
                                 specButton.callback, self);                        
                         }
-                        panel.panelContent.append(button);
+                        panel.panelContent.appendChild(button);
                     });
                 } else if (specPanel.type == "document-list") {
                     var documentList = L.DomUtil.create('ul', 'panelmanager-panel-document-list');

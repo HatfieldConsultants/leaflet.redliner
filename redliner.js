@@ -1101,7 +1101,7 @@ if (!Array.prototype.findIndex) {
                                     }
                                 });
 
-                                self.root.ControlBar.editComment(comment, image, { addText: true, textAreaMarker: marker });
+                                self.root.editComment(comment, image, { addText: true, textAreaMarker: marker });
                                 self.root.Tools.setCurrentTool('text', { listeners: false });
 
                                 inputBox.addEventListener('input', inputRenderText, false);

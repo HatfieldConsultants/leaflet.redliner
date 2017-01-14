@@ -102,7 +102,7 @@ if (!Array.prototype.findIndex) {
             } else {
                 self.Tools.on();
             }
-        }, 
+        },
 
         stopDrawingMode: function () {
             var self = this;
@@ -124,7 +124,7 @@ if (!Array.prototype.findIndex) {
             delete self.drawingCanvas;
         },
 
-        startNewComment: function() {
+        startNewComment: function () {
             var self = this;
 
             // create new comment
@@ -133,7 +133,7 @@ if (!Array.prototype.findIndex) {
             // trigger drawing mode
             self.startDrawingMode(newComment);
 
-            return newComment;            
+            return newComment;
         },
 
 
@@ -248,10 +248,10 @@ if (!Array.prototype.findIndex) {
                 try {
                     var event = new Event('new-comment-saved');
                 }
-                catch(err) {
+                catch (err) {
                     var event = document.createEvent("CustomEvent");
                     event.initCustomEvent("new-comment-saved", true, false, { detail: {} });
-                }     
+                }
                 // Dispatch the event.
                 self.ownMap._container.dispatchEvent(event);
 
@@ -259,10 +259,10 @@ if (!Array.prototype.findIndex) {
                 try {
                     var event = new Event('comment-edit-end');
                 }
-                catch(err) {
+                catch (err) {
                     var event = document.createEvent("CustomEvent");
                     event.initCustomEvent("comment-edit-end", true, false, { detail: {} });
-                }     
+                }
                 // Dispatch the event.
                 self.ownMap._container.dispatchEvent(event);
             }
@@ -304,15 +304,15 @@ if (!Array.prototype.findIndex) {
             try {
                 var event = new Event('comment-edit-start');
             }
-            catch(err) {
+            catch (err) {
                 var event = document.createEvent("CustomEvent");
                 event.initCustomEvent("comment-edit-start", true, false, { detail: {} });
-            }     
+            }
             // Dispatch the event.
             self.ownMap._container.dispatchEvent(event);
 
             return comment;
-        },        
+        },
 
     };
 
@@ -578,10 +578,10 @@ if (!Array.prototype.findIndex) {
                 try {
                     var event = new Event('new-comment-created');
                 }
-                catch(err) {
+                catch (err) {
                     var event = document.createEvent("CustomEvent");
                     event.initCustomEvent("new-comment-created", true, false, { detail: {} });
-                }     
+                }
                 // Dispatch the event.
                 self.root.ownMap._container.dispatchEvent(event);
 
@@ -608,7 +608,7 @@ if (!Array.prototype.findIndex) {
             //var x_true = x + (parseFloat(canvasTransformArray[1]));
             //var y_true = y + (parseFloat(canvasTransformArray[4]));
 
-            pos = self.root.ownMap.mouseEventToContainerPoint(e);
+            pos = self.root.ownMap.mouseEventToLayerPoint(e);
             return {
                 x: pos.x,
                 y: pos.y,
@@ -631,11 +631,11 @@ if (!Array.prototype.findIndex) {
                     }
                 }
             }
-            pix.x.sort(function (a, b) { 
+            pix.x.sort(function (a, b) {
                 return a - b;
             });
             pix.y.sort(function (a, b) {
-                return a - b; 
+                return a - b;
             });
             var n = pix.x.length - 1;
 
@@ -1119,17 +1119,17 @@ if (!Array.prototype.findIndex) {
         }
     };
     Redliner.Events = {
-        initializeListeners: function() {
+        initializeListeners: function () {
             var self = this;
 
-            var fireUpdateCommentListViewEvent = function() {
+            var fireUpdateCommentListViewEvent = function () {
                 try {
                     var event = new Event('comment-list-refresh');
                 }
-                catch(err) {
+                catch (err) {
                     var event = document.createEvent("CustomEvent");
                     event.initCustomEvent("comment-list-refresh", true, false, { detail: {} });
-                }     
+                }
                 // Dispatch the event.
                 window.dispatchEvent(event);
 
@@ -1141,15 +1141,15 @@ if (!Array.prototype.findIndex) {
             }, false);
             self.root.ownMap._container.addEventListener('new-comment-saved', function (e) {
                 console.log('new comment saved');
-                fireUpdateCommentListViewEvent();                
+                fireUpdateCommentListViewEvent();
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-start', function (e) {
                 console.log('started editing a comment');
-                fireUpdateCommentListViewEvent();                
+                fireUpdateCommentListViewEvent();
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-end', function (e) {
                 console.log('finished editing a comment');
-                fireUpdateCommentListViewEvent();                
+                fireUpdateCommentListViewEvent();
             }, false);
 
             // listen for events emitted by Network module
@@ -1166,7 +1166,7 @@ if (!Array.prototype.findIndex) {
     Redliner.GUI = {
         // using leaflet.panel-manager
 
-        loadPanels: function() {
+        loadPanels: function () {
             var self = this;
             var guiSpecification = {}
             guiSpecification.panels = [];
@@ -1175,11 +1175,11 @@ if (!Array.prototype.findIndex) {
 
             var toolPanel = {
                 type: "button-list",
-                position: "right",
+                position: "bottom",
                 toggleHide: "button",
                 title: "Drawing Tools",
                 toggleIcon: "assets/pencil.png",
-                toggleOnCallback: function() {
+                toggleOnCallback: function () {
                     self.root.startNewComment();
                     self.root.ownMap.dragging.disable();
                     self.root.ownMap.touchZoom.disable();
@@ -1192,7 +1192,7 @@ if (!Array.prototype.findIndex) {
                     }
                     document.getElementById('map').style.cursor = 'default';
                 },
-                toggleOffCallback: function() {
+                toggleOffCallback: function () {
                     self.root.saveDrawing(self.root.Comments.mostRecentUsedComment, { closeSave: true });
                     self.root.ownMap.dragging.enable();
                     self.root.ownMap.touchZoom.enable();
@@ -1208,8 +1208,8 @@ if (!Array.prototype.findIndex) {
                 buttons: [
                     {
                         name: "red pen",
-                        icon: "assets/red-circle.png",
-                        callback: function() {
+                        icon: "red-pen",
+                        callback: function () {
                             self.root.Tools.setCurrentTool('pen', {
                                 colour: 'red'
                             });
@@ -1217,33 +1217,33 @@ if (!Array.prototype.findIndex) {
                     },
                     {
                         name: "black pen",
-                        icon: "assets/black-circle.png",
-                        callback: function() {
+                        icon: "black-pen",
+                        callback: function () {
                             self.root.Tools.setCurrentTool('pen', {
                                 colour: 'black'
                             });
-                        }                        
+                        }
                     },
                     {
                         name: "yellow pen",
-                        icon: "assets/yellow-circle.png",
-                        callback: function() {
+                        icon: "yellow-pen",
+                        callback: function () {
                             self.root.Tools.setCurrentTool('pen', {
                                 colour: 'yellow'
                             });
-                        }                        
+                        }
                     },
                     {
                         name: "eraser",
-                        icon: "assets/eraser.png",
-                        callback: function() {
+                        icon: "eraser",
+                        callback: function () {
                             self.root.Tools.setCurrentTool('eraser');
                         }
                     },
                     {
                         name: "text",
-                        icon: "assets/text.png",
-                        callback: function() {
+                        icon: "text",
+                        callback: function () {
                             self.root.Tools.setCurrentTool('text');
                         }
                     }
@@ -1254,7 +1254,7 @@ if (!Array.prototype.findIndex) {
 
             var commentPanel = {
                 type: "document-list",
-                position: "right",
+                position: "bottom",
                 title: "Comments",
                 toggleHide: true,
                 eventName: "comment-list-refresh",

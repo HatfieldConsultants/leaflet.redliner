@@ -600,16 +600,18 @@ if (!Array.prototype.findIndex) {
             return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
         },
 
-        getMousePos: function (x, y) {
+        getMousePos: function (e) {
             var self = this;
             // this parses stuff like "translate3d(-1257px, -57px, 0px)" and turns it into an array like...
             // [ "translate3d", "-1257", "", "", "-57", "", "", "0", "", "" ]
-            var canvasTransformArray = self.root.drawingCanvas._container.style.transform.split(/,|\(|\)|px| /);
-            var x_true = x + (parseFloat(canvasTransformArray[1]));
-            var y_true = y + (parseFloat(canvasTransformArray[4]));
+            //var canvasTransformArray = self.root.drawingCanvas._container.style.transform.split(/,|\(|\)|px| /);
+            //var x_true = x + (parseFloat(canvasTransformArray[1]));
+            //var y_true = y + (parseFloat(canvasTransformArray[4]));
+
+            pos = self.root.ownMap.mouseEventToContainerPoint(e);
             return {
-                x: x_true,
-                y: y_true,
+                x: pos.x,
+                y: pos.y,
             };
         },
 
@@ -774,7 +776,8 @@ if (!Array.prototype.findIndex) {
 
                 canvas.addEventListener('mousemove', function (e) {
                     if (self.stroke && self.root.Tools.currentTool == 'pen') {
-                        var pos = self.root.Util.getMousePos(e.clientX, e.clientY);
+                        console.log(e);
+                        var pos = self.root.Util.getMousePos(e);
                         self.mouseX = pos.x;
                         self.mouseY = pos.y;
                         self.drawLine(context, self.mouseX, self.mouseY, 3);
@@ -782,7 +785,7 @@ if (!Array.prototype.findIndex) {
                 }, false);
                 canvas.addEventListener('touchmove', function (e) {
                     if (self.stroke && self.root.Tools.currentTool == 'pen') {
-                        var pos = self.root.Util.getMousePos(e.touches[0].clientX, e.touches[0].clientY);
+                        var pos = self.root.Util.getMousePos(e);
                         self.mouseX = pos.x;
                         self.mouseY = pos.y;
                         self.drawLine(context, self.mouseX, self.mouseY, 3);
@@ -868,7 +871,7 @@ if (!Array.prototype.findIndex) {
 
                 canvas.addEventListener('mousemove', function (e) {
                     if (self.stroke && self.root.Tools.currentTool == 'eraser') {
-                        var pos = self.root.Util.getMousePos(e.clientX, e.clientY);
+                        var pos = self.root.Util.getMousePos(e);
                         self.mouseX = pos.x;
                         self.mouseY = pos.y;
                         self.drawLine(context, self.mouseX, self.mouseY, 35);

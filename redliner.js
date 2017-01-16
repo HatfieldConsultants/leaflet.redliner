@@ -776,7 +776,6 @@ if (!Array.prototype.findIndex) {
 
                 canvas.addEventListener('mousemove', function (e) {
                     if (self.stroke && self.root.Tools.currentTool == 'pen') {
-                        console.log(e);
                         var pos = self.root.Util.getMousePos(e);
                         self.mouseX = pos.x;
                         self.mouseY = pos.y;

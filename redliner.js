@@ -1259,11 +1259,23 @@ if (!Array.prototype.findIndex) {
                 eventName: "comment-list-refresh",
                 documentSource: self.root.Comments.list,
                 documentActions: [
+                	{
+                		name: "View",
+                		action: function() {
+                			console.log("view comment");
+                		}
+                	},
                     {
-                        name: "Edit"
+                        name: "Edit",
+                        action: function() {
+                        	console.log("edit comment");
+                        }
                     },
                     {
-                        name: "Delete"
+                        name: "Delete",
+                        action: function() {
+                        	console.log("delete comment");
+                        }
                     }
                 ]
             }

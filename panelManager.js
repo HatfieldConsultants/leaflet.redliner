@@ -245,12 +245,7 @@
                             self.loadDocumentList(specPanel, documentList);
                         }, false);
                     }
-                    if (specPanel.documents) {
-                        specPanel.documents.forEach(function(specDocument) {
-                            var documentItem = L.DomUtil.create('li', 'panelmanager-panel-document-li');
-                            documentList.appendChild(documentItem);
-                        });                        
-                    }
+                    self.loadDocumentList(specPanel, documentList);
                 }
 
 
@@ -265,9 +260,20 @@
             if (specPanel.documentSource) {
                 specPanel.documentSource.forEach(function(document) {
                     var documentItem = L.DomUtil.create('li', 'panelmanager-panel-document-li');
-                    documentItem.innerHTML = document.name;
+                    var documentItemPropertyList = L.DomUtil.create('ul', 'panelmanager-document-property-ul');
+                    documentItem.appendChild(documentItemPropertyList);
+                    itemName = L.DomUtil.create('li', 'panelmanager-document-name panelmanager-document-property-li');
+                    itemName.innerHTML = document.name;
+                    documentItemPropertyList.appendChild(itemName);
+                    specPanel.documentActions.forEach(function(documentAction) {
+                        actionName = L.DomUtil.create('li', 'panelmanager-document-action panelmanager-document-property-li');
+                        actionName.innerHTML = documentAction.name;
+                        console.log(actionName);
+                        documentItemPropertyList.appendChild(actionName);
+                    });
+
                     documentList.appendChild(documentItem);
-                });                        
+                });
             }
 
         }

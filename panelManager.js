@@ -268,8 +268,9 @@
                     specPanel.documentActions.forEach(function(documentAction) {
                         actionName = L.DomUtil.create('li', 'panelmanager-document-action panelmanager-document-property-li');
                         actionName.innerHTML = documentAction.name;
-                        console.log(actionName);
                         documentItemPropertyList.appendChild(actionName);
+                        L.DomEvent.on(actionName, 'click',
+                            documentAction.action, self);
                     });
 
                     documentList.appendChild(documentItem);

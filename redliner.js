@@ -116,9 +116,9 @@ if (!Array.prototype.findIndex) {
             self.Comments.editingComment = '';
 
             // Add all comment layer groups to map
-            self.Comments.list.forEach(function (comment) {
-                comment.addTo(map);
-            });
+            //self.Comments.list.forEach(function (comment) {
+            //    comment.addTo(map);
+            //});
 
             self.drawingCanvas.removeFrom(map);
             delete self.drawingCanvas;
@@ -272,8 +272,6 @@ if (!Array.prototype.findIndex) {
 
         editComment: function (comment, image, options) {
             var self = this;
-            // fly to comment
-            //map.flyToBounds(image._bounds, {animate: false});
 
             // trigger drawing mode
             if (options) {
@@ -310,6 +308,8 @@ if (!Array.prototype.findIndex) {
             }
             // Dispatch the event.
             self.ownMap._container.dispatchEvent(event);
+            
+            self.Comments.mostRecentUsedComment = comment;
 
             return comment;
         },
@@ -516,6 +516,8 @@ if (!Array.prototype.findIndex) {
             var comment = L.layerGroup();
             comment.name = "Untitled Note";
             comment.textLayerGroup = L.layerGroup();
+            comment.coords = self.root.ownMap.getCenter();
+            comment.initialZoom = self.root.ownMap.getZoom();
 
             if (loadedComment) {
                 // prep comment with all that tasty info
@@ -1134,6 +1136,29 @@ if (!Array.prototype.findIndex) {
 
             }
 
+            var fireShowToolsEvent = function () {
+                try {
+                    var event = new Event('drawing-tools-show');
+                }
+                catch (err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("drawing-tools-show", true, false, { detail: {} });
+                }
+                // Dispatch the event.
+                window.dispatchEvent(event);
+            }
+            var fireHideToolsEvent = function () {
+                try {
+                    var event = new Event('drawing-tools-hide');
+                }
+                catch (err) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("drawing-tools-hide", true, false, { detail: {} });
+                }
+                // Dispatch the event.
+                window.dispatchEvent(event);
+            }
+
             self.root.ownMap._container.addEventListener('new-comment-created', function (e) {
                 console.log('new comment created');
                 fireUpdateCommentListViewEvent();
@@ -1145,10 +1170,12 @@ if (!Array.prototype.findIndex) {
             self.root.ownMap._container.addEventListener('comment-edit-start', function (e) {
                 console.log('started editing a comment');
                 fireUpdateCommentListViewEvent();
+                fireShowToolsEvent();
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-end', function (e) {
                 console.log('finished editing a comment');
                 fireUpdateCommentListViewEvent();
+                fireHideToolsEvent();
             }, false);
 
             // listen for events emitted by Network module
@@ -1171,12 +1198,14 @@ if (!Array.prototype.findIndex) {
             guiSpecification.panels = [];
 
             // Tool panel (3 colours of pens, eraser, and text tool)
+            var oldMouseStyle;
 
             var toolPanel = {
                 type: "button-list",
                 position: "bottom",
                 toggleHide: "button",
                 title: "Drawing Tools",
+                panelName: "redliner-drawing-tools",
                 toggleIcon: "assets/pencil.png",
                 toggleOnCallback: function () {
                     self.root.startNewComment();
@@ -1189,6 +1218,7 @@ if (!Array.prototype.findIndex) {
                     if (self.root.ownMap.tap) {
                         self.root.ownMap.tap.disable();
                     }
+                    oldMouseStyle = document.getElementById('map').style.cursor;
                     document.getElementById('map').style.cursor = 'default';
                 },
                 toggleOffCallback: function () {
@@ -1202,7 +1232,7 @@ if (!Array.prototype.findIndex) {
                     if (self.root.ownMap.tap) {
                         self.root.ownMap.tap.enable();
                     }
-                    document.getElementById('map').style.cursor = 'grab';
+                    document.getElementById('map').style.cursor = oldMouseStyle;
                 },
                 buttons: [
                     {
@@ -1257,23 +1287,85 @@ if (!Array.prototype.findIndex) {
                 title: "Comments",
                 toggleHide: true,
                 eventName: "comment-list-refresh",
+                panelName: "redliner-comment-list",
                 documentSource: self.root.Comments.list,
                 documentActions: [
                 	{
                 		name: "View",
-                		action: function() {
+                		style: "view",
+                		action: function(comment) {
                 			console.log("view comment");
+							self.root.Comments.list.forEach(function(list_comment) {
+								list_comment.removeFrom(self.root.ownMap);
+							});
+
+							comment.addTo(self.root.ownMap);
+                			
+
+                			self.root.ownMap.setView(comment.coords, comment.initialZoom);
                 		}
                 	},
                     {
                         name: "Edit",
-                        action: function() {
+                        style: "edit",
+                        action: function(comment) {
                         	console.log("edit comment");
+
+    	                    self.root.ownMap.dragging.disable();
+		                    self.root.ownMap.touchZoom.disable();
+		                    self.root.ownMap.doubleClickZoom.disable();
+		                    self.root.ownMap.scrollWheelZoom.disable();
+		                    self.root.ownMap.boxZoom.disable();
+		                    self.root.ownMap.keyboard.disable();
+		                    if (self.root.ownMap.tap) {
+		                        self.root.ownMap.tap.disable();
+		                    }
+		                    oldMouseStyle = document.getElementById('map').style.cursor;
+		                    document.getElementById('map').style.cursor = 'default';
+
+                        	var image;
+							
+							self.root.Comments.list.forEach(function(list_comment) {
+								list_comment.removeFrom(self.root.ownMap);
+							});
+
+                        	comment.getLayers().forEach(function(layer) {
+                    			if (layer.layerType == "drawing") {
+                    				image = layer;
+                    			}
+                        	});
+
+                        	var onAdd = function() {
+	        	                try {
+				                    var event1 = new Event('show-redliner-drawing-tools');
+				                    var event2 = new Event('hide-redliner-comment-list');
+				                }
+				                catch (err) {
+				                    var event1 = document.createEvent("CustomEvent");
+				                    event.initCustomEvent("show-redliner-drawing-tools", true, false, { detail: {} });
+				                    var event2 = document.createEvent("CustomEvent");
+				                    event.initCustomEvent("hide-redliner-comment-list", true, false, { detail: {} });
+				                }
+				                // Dispatch the event.
+				                window.dispatchEvent(event1);
+				                window.dispatchEvent(event2);
+
+                        		self.root.editComment(comment, image);
+                        		comment.off('add', onAdd);                        		
+                        	}
+
+        	                comment.on('add', onAdd);
+
+							comment.addTo(self.root.ownMap);
+
+
+
                         }
                     },
                     {
                         name: "Delete",
-                        action: function() {
+                        style: "delete",
+                        action: function(document) {
                         	console.log("delete comment");
                         }
                     }

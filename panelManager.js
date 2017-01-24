@@ -89,7 +89,7 @@
                     L.DomUtil.addClass(close, "panelmanager-close-" + options.position);
                     close.innerHTML = '&times;';
     
-                    var togglePanel = function(e){
+                    panel.togglePanel = function(e){
                         if (panel.visible) {
                             L.DomUtil.removeClass(panel, "panelmanager-max-" + options.position);
                             L.DomUtil.addClass(panel, "panelmanager-min-" + options.position);
@@ -105,7 +105,7 @@
                         }
                         panel.visible = !panel.visible;
                     };
-                    var hidePanel = function(e){
+                    panel.hidePanel = function(e){
                         L.DomUtil.removeClass(panel, "panelmanager-max-" + options.position);
                         L.DomUtil.addClass(panel, "panelmanager-invisible-" + options.position);
                         panel.visible = false;
@@ -115,7 +115,7 @@
                         L.DomUtil.removeClass(panel.button, "invisible");
 
                     };
-                    var showPanel = function(e){
+                    panel.showPanel = function(e){
                         L.DomUtil.removeClass(panel, "panelmanager-invisible-" + options.position);
                         L.DomUtil.addClass(panel, "panelmanager-max-" + options.position);
                         panel.visible = true;
@@ -150,10 +150,10 @@
                                 panel.button.style.cursor = 'pointer';
 
                                 L.DomEvent.on(panel.button, 'click',
-                                    showPanel, self);
+                                    panel.showPanel, self);
 
                                 L.DomEvent.on(close, 'click',
-                                    hidePanel, self);
+                                    panel.hidePanel, self);
 
                                 // optional callback that can be triggered when opening a panel with button-toggle
                                 if (options.toggleOnCallback) {
@@ -174,7 +174,7 @@
                         L.DomUtil.addClass(panel, "panelmanager-max-" + options.position);
 
                         L.DomEvent.on(close, 'click',
-                            togglePanel, self);                        
+                            panel.togglePanel, self);                        
                     }
 
                 }
@@ -224,8 +224,37 @@
                     toggleOnCallback: specPanel.toggleOnCallback,
                     toggleOffCallback: specPanel.toggleOffCallback,
                     title: specPanel.title,
+                    silentToggleOnEvent: specPanel.silentToggleOnEvent,
+                    silentToggleOffEvent: specPanel.silentToggleOffEvent,
                 });
                 panel.addTo(map);
+
+                // listeners for opening and closing the panel (silently)
+                if (specPanel.toggleHide) {
+
+                    if (specPanel.toggleHide == "button") {
+                        window.addEventListener('show-' + specPanel.panelName, function (e) {
+                            panel.showPanel();
+                        }, false);
+
+                        window.addEventListener('hide-' + specPanel.panelName, function (e) {
+                            panel.hidePanel();
+                        }, false);
+                    } else {
+                        window.addEventListener('show-' + specPanel.panelName, function (e) {
+                            // TODO: check if panel is already visible 
+                            panel.togglePanel();
+                        }, false);
+
+                        window.addEventListener('hide-' + specPanel.panelName, function (e) {
+                            // TODO: check if panel is already hidden
+                            panel.togglePanel();
+                        }, false);
+
+                    }
+
+                }
+
 
                 if (specPanel.type == "button-list") {
                     specPanel.buttons.forEach(function(specButton) {
@@ -258,6 +287,9 @@
             }
 
             if (specPanel.documentSource) {
+                
+                var styleList = specPanel.documentActions.map(function(a) {return a.style;});
+
                 specPanel.documentSource.forEach(function(document) {
                     var documentItem = L.DomUtil.create('li', 'panelmanager-panel-document-li');
                     var documentItemPropertyList = L.DomUtil.create('ul', 'panelmanager-document-property-ul');
@@ -270,7 +302,21 @@
                         actionName.innerHTML = documentAction.name;
                         documentItemPropertyList.appendChild(actionName);
                         L.DomEvent.on(actionName, 'click',
-                            documentAction.action, self);
+                            function() {
+                                // callback for document
+                                documentAction.action(document);
+
+                                //document styles
+                                styleList.forEach(function(style) {
+                                    var documentListItems = documentList.children;
+                                    for (var i = 0; i < documentListItems.length; ++i) {
+                                        L.DomUtil.removeClass(documentListItems[i], style);                                    
+                                    };
+                                });
+
+                                L.DomUtil.addClass(documentItem, documentAction.style);
+
+                            }, self);
                     });
 
                     documentList.appendChild(documentItem);

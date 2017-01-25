@@ -107,18 +107,15 @@ if (!Array.prototype.findIndex) {
         stopDrawingMode: function () {
             var self = this;
 
-            // set mode to "drawing"
-            self.currentMode = 'controlBarHome';
-
             // turn off all drawing tools
             self.Tools.off();
 
             self.Comments.editingComment = '';
 
-            // Add all comment layer groups to map
-            //self.Comments.list.forEach(function (comment) {
-            //    comment.addTo(map);
-            //});
+            // Make sure all comment layers are not visible on map
+            self.Comments.list.forEach(function (comment) {
+                comment.removeFrom(map);
+            });
 
             self.drawingCanvas.removeFrom(map);
             delete self.drawingCanvas;
@@ -149,7 +146,6 @@ if (!Array.prototype.findIndex) {
             if (options && options.textSave) {
                 // saving text, so special case
             } else {
-                comment.zoomLevel = self.ownMap.getZoom();
                 // SAVING LOGIC
                 var context = self.drawingCanvas._ctx;
                 var canvas = context.canvas;
@@ -288,12 +284,18 @@ if (!Array.prototype.findIndex) {
 
             if (image) {
                 var imageObj = new Image();
+                image.addTo(self.ownMap); // needed for image width and height...
+                // remember to remove the image after it is no longer needed (i.e. in imageObj.onload)
+                // it might be necessary to trigger the rest of this block AFTER the image layer is added by listening for the 'add' event
+                // for now this seems to be working, so I will leave it like this
 
+                console.log(comment.zoomLevel);
                 var newWidth = image._image.width * self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.zoomLevel);
                 var newHeight = image._image.height * self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.zoomLevel);
 
                 imageObj.onload = function () {
                     context.drawImage(imageObj, image._image._leaflet_pos.x, image._image._leaflet_pos.y, newWidth, newHeight);
+                    image.removeFrom(self.ownMap);
                 };
 
                 imageObj.src = image._image.src;
@@ -308,7 +310,7 @@ if (!Array.prototype.findIndex) {
             }
             // Dispatch the event.
             self.ownMap._container.dispatchEvent(event);
-            
+
             self.Comments.mostRecentUsedComment = comment;
 
             return comment;
@@ -948,23 +950,24 @@ if (!Array.prototype.findIndex) {
                         marker.addTo(self.root.ownMap);
                         marker.layerType = 'textAreaMarker';
                         self.root.saveDrawing(comment);
-                        self.root.ownMap.setView(marker._latlng, map.getZoom(), { animate: false });
-                        self.root.ownMap.panBy([200, 150], { animate: false });
+                      self.root.ownMap.setView(marker._latlng, map.getZoom(), { animate: false });
+                      self.root.ownMap.panBy([200, 150], { animate: false });
 
-                        // start editing again
-                        // ...
+                      // start editing again
+                      // ...
 
-                        comment.getLayers().forEach(function (layer) {
-                            if (layer.layerType == 'drawing') {
-                                image = layer;
-                            }
-                        });
+                      comment.getLayers().forEach(function (layer) {
+                          if (layer.layerType == 'drawing') {
+                              image = layer;
+                          }
+                      });
 
-                        self.root.editComment(comment, image, { addText: true, textAreaMarker: marker });
-                        self.root.Tools.setCurrentTool('text', { listeners: false });
-                        textBox = document.getElementById(id);
-                        textBox.focus();
-                        textBox.addEventListener('input', inputRenderText, false);
+                      self.root.editComment(comment, image, { addText: true, textAreaMarker: marker });
+                      self.root.Tools.setCurrentTool('text', { listeners: false });
+                      textBox = document.getElementById(id);
+                      textBox.focus();
+                      textBox.addEventListener('input', inputRenderText, false);
+
                     }
                 };
 
@@ -1300,7 +1303,7 @@ if (!Array.prototype.findIndex) {
 							});
 
 							comment.addTo(self.root.ownMap);
-                			
+
 
                 			self.root.ownMap.setView(comment.coords, comment.initialZoom);
                 		}
@@ -1324,7 +1327,7 @@ if (!Array.prototype.findIndex) {
 		                    document.getElementById('map').style.cursor = 'default';
 
                         	var image;
-							
+
 							self.root.Comments.list.forEach(function(list_comment) {
 								list_comment.removeFrom(self.root.ownMap);
 							});
@@ -1351,7 +1354,7 @@ if (!Array.prototype.findIndex) {
 				                window.dispatchEvent(event2);
 
                         		self.root.editComment(comment, image);
-                        		comment.off('add', onAdd);                        		
+                        		comment.off('add', onAdd);
                         	}
 
         	                comment.on('add', onAdd);

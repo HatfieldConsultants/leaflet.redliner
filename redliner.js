@@ -289,9 +289,8 @@ if (!Array.prototype.findIndex) {
                 // it might be necessary to trigger the rest of this block AFTER the image layer is added by listening for the 'add' event
                 // for now this seems to be working, so I will leave it like this
 
-                console.log(comment.zoomLevel);
-                var newWidth = image._image.width * self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.zoomLevel);
-                var newHeight = image._image.height * self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.zoomLevel);
+                var newWidth = image._image.width // * self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.initialZoom); - this isn't needed apparently!
+                var newHeight = image._image.height //* self.ownMap.getZoomScale(self.ownMap.getZoom(), comment.initialZoom); - image height and width are adjusted by leaflet when changing zoom levels
 
                 imageObj.onload = function () {
                     context.drawImage(imageObj, image._image._leaflet_pos.x, image._image._leaflet_pos.y, newWidth, newHeight);
@@ -526,7 +525,7 @@ if (!Array.prototype.findIndex) {
                 comment.saveState = true;
                 comment.id = loadedComment.id;
                 comment.name = loadedComment.name;
-                comment.zoomLevel = loadedComment.zoomLevel;
+                comment.initialZoom = loadedComment.initialZoom;
 
                 // load sketch
                 var newImage = L.imageOverlay(loadedComment.drawing.dataUrl, [loadedComment.drawing.bounds.southWest, loadedComment.drawing.bounds.northEast]);

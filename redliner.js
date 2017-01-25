@@ -701,6 +701,14 @@ if (!Array.prototype.findIndex) {
             var self = this;
             self[self.currentTool].terminate();
             self.currentTool = '';
+            // add all text images
+
+            self.root.Comments.editingComment.getLayers().forEach(function (layer) {
+                if (layer.layerType == 'textDrawing') {
+                    layer.removeFrom(self.root.ownMap);
+                }
+            });
+
         },
 
         setCurrentTool: function (tool, options) {

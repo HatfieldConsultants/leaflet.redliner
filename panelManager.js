@@ -303,25 +303,43 @@
 
             if (specPanel.documentSource) {
 
-                var styleList = specPanel.documentActions.map(function(a) {return a.style;});
-
-                specPanel.documentSource.forEach(function(document) {
+                specPanel.documentSource.forEach(function(panelDocument) {
                     var documentItem = L.DomUtil.create('li', 'panelmanager-panel-document-li');
                     var documentItemPropertyList = L.DomUtil.create('ul', 'panelmanager-document-property-ul');
                     documentItem.appendChild(documentItemPropertyList);
                     itemName = L.DomUtil.create('li', 'panelmanager-document-name panelmanager-document-property-li');
-                    itemName.innerHTML = document.name;
+                    itemName.innerHTML = panelDocument.name;
                     documentItemPropertyList.appendChild(itemName);
                     specPanel.documentActions.forEach(function(documentAction) {
                         actionLi = L.DomUtil.create('li', 'panelmanager-document-action panelmanager-document-property-li');
-                        actionButton = L.DomUtil.create('button', 'panelmanager-document-action panelmanager-document-property-button ' + documentAction.style);
+                        actionButton = L.DomUtil.create('button', 'panelmanager-document-action panelmanager-document-property-button ' + documentAction.name);
                         documentItemPropertyList.appendChild(actionLi);
-                        actionButton.innerHTML = documentAction.name;
+                        actionButton.innerHTML = documentAction.displayName;
                         actionButton.onclick = function() {
-                            documentAction.action(document);
+                            documentAction.action(panelDocument);
                         };
+
+                        if (!document.isOld) {
+                            // listeners for button state (active/inactive)
+                            window.addEventListener('enable-' + documentAction.name, function (e) {
+                                console.log('enabling ' + documentAction.name + ' for ' + e.detail.commentId);
+                            }, false);
+
+                            window.addEventListener('disable-' + documentAction.name, function (e) {
+                                var comment = e.detail;
+                                if (comment.id == panelDocument.id) {
+                                    var eventActionButton = document.getElementsByClassName(documentAction.name)[0];
+                                    console.log('disabling ' + documentAction.name + ' for ' + comment.name);
+                                    L.DomUtil.addClass(eventActionButton, 'panelmanager-document-property-button-disabled');
+                                }
+                            }, false);
+                        }
+
+
                         actionLi.appendChild(actionButton);
                     });
+
+                    document.isOld = true;
 
                     documentList.appendChild(documentItem);
                 });

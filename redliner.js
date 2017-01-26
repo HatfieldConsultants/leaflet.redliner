@@ -300,13 +300,8 @@ if (!Array.prototype.findIndex) {
                 imageObj.src = image._image.src;
             }
 
-            try {
-                var event = new Event('comment-edit-start');
-            }
-            catch (err) {
-                var event = document.createEvent("CustomEvent");
-                event.initCustomEvent("comment-edit-start", true, false, { detail: {} });
-            }
+            var event = document.createEvent("CustomEvent");
+            event.initCustomEvent("comment-edit-start", true, false, comment);
             // Dispatch the event.
             self.ownMap._container.dispatchEvent(event);
 
@@ -1169,6 +1164,20 @@ if (!Array.prototype.findIndex) {
                 window.dispatchEvent(event);
             }
 
+            var fireEnableEditEvent = function (comment) {
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent('enable-edit', true, false, comment);
+                // Dispatch the event.
+                window.dispatchEvent(event);
+            }
+
+            var fireDisableEditEvent = function (comment) {
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent('disable-edit', true, false, comment);
+                // Dispatch the event.
+                window.dispatchEvent(event);
+            }
+
             self.root.ownMap._container.addEventListener('new-comment-created', function (e) {
                 console.log('new comment created');
                 fireUpdateCommentListViewEvent();
@@ -1181,11 +1190,15 @@ if (!Array.prototype.findIndex) {
                 console.log('started editing a comment');
                 fireUpdateCommentListViewEvent();
                 fireShowToolsEvent();
+                var comment = e.detail;
+                fireDisableEditEvent(comment);
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-end', function (e) {
                 console.log('finished editing a comment');
                 fireUpdateCommentListViewEvent();
                 fireHideToolsEvent();
+                var comment = e.detail;
+                fireEnableEditEvent(comment);
             }, false);
 
             // listen for events emitted by Network module
@@ -1301,8 +1314,8 @@ if (!Array.prototype.findIndex) {
                 documentSource: self.root.Comments.list,
                 documentActions: [
                 	{
-                		name: "View",
-                		style: "view",
+                		displayName: "View",
+                		name: "view",
                 		action: function(comment) {
                 			console.log("view comment");
 							self.root.Comments.list.forEach(function(list_comment) {
@@ -1316,8 +1329,8 @@ if (!Array.prototype.findIndex) {
                 		}
                 	},
                     {
-                        name: "Edit",
-                        style: "edit",
+                        displayName: "Edit",
+                        name: "edit",
                         action: function(comment) {
                         	console.log("edit comment");
 
@@ -1373,8 +1386,8 @@ if (!Array.prototype.findIndex) {
                         }
                     },
                     {
-                        name: "Delete",
-                        style: "delete",
+                        displayName: "Delete",
+                        name: "delete",
                         action: function(document) {
                         	console.log("delete comment");
                         }

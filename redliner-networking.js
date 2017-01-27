@@ -53,16 +53,68 @@ if (!Array.prototype.findIndex) {
 
         addTo: function (map) {
             var self = this;
+            var title = document.getElementsByTagName("title")[0].innerHTML;
             self.ownMap = map;
             map.RedlinerNetworking = RedlinerNetworking;
-	        var redlinerHub = $.connection.redlinerHub;
-	        redlinerHub.client.hello = function () {
-	            console.log('hello from signalr!');
-	        };
-	        $.connection.hub.start().done(function () {
-	            var title = document.getElementsByTagName("title")[0].innerHTML;
-	            redlinerHub.server.hello(title);
-	        });
+
+            var redlinerNetworkProxy = $.connection.redlinerNetwork;
+
+            redlinerNetworkProxy.client.newClientConnection = function () {
+                console.log('a new client has connected to this site!');
+            };
+
+            redlinerNetworkProxy.client.acknowledgeConnection = function () {
+                console.log('requesting comment info');
+                redlinerNetworkProxy.server.loadCommentsFromRedlinerJson(title);
+            }
+
+            redlinerNetworkProxy.client.loadCommentsFromRedlinerJson = function () {
+                console.log('loaded comment data from server!');
+            };
+
+            redlinerNetworkProxy.client.newCommentCreated = function () {
+                console.log('a new comment was created by another client');
+            };
+            redlinerNetworkProxy.client.newCommentSaved = function () {
+                console.log('a new comment was saved by another client');
+            };
+            redlinerNetworkProxy.client.commentEditStart = function () {
+                console.log('a comment is being edited by another client');
+            };
+            redlinerNetworkProxy.client.commentEditEnd = function () {
+                console.log('a comment is no longer being edited by another client');
+            };
+
+            /*
+                Listeners for Redliner.js:
+                new-comment-created
+                new-comment-saved
+                comment-edit-start
+                comment-edit-end
+            */
+
+            self.ownMap._container.addEventListener('new-comment-created', function (e) {
+                console.log('notifying server of new comment created');
+                redlinerNetworkProxy.server.newCommentCreated(title);
+            }, false);
+            self.ownMap._container.addEventListener('new-comment-saved', function (e) {
+                console.log('notifying server of new comment saved');
+                redlinerNetworkProxy.server.newCommentSaved(title);
+            }, false);
+            self.ownMap._container.addEventListener('comment-edit-start', function (e) {
+                console.log('notifying server of a comment now being edited');
+                redlinerNetworkProxy.server.commentEditStart(title);
+            }, false);
+            self.ownMap._container.addEventListener('comment-edit-end', function (e) {
+                console.log('notifying server of a comment no longer being edited');
+                redlinerNetworkProxy.server.commentEditEnd(title);
+            }, false);
+
+            $.connection.hub.start().done(function () {
+                console.log('registering connection');
+                redlinerNetworkProxy.server.registerConnection(title);
+            });
+
 
         },
 

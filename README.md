@@ -5,6 +5,8 @@
 
 *A Leaflet plugin used to add markup to maps. Requires the [PanelManager](https://github.com/NimaBoscarino/leaflet.panelManager) plugin.*
 
+**[Demo](https://nimaboscarino.github.io/leaflet.redliner/)**
+
 **Installation**:
 
 **Step 1 - Add PanelManager to the map**

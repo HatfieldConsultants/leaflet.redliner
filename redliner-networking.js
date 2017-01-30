@@ -73,10 +73,22 @@ if (!Array.prototype.findIndex) {
             };
 
             redlinerNetworkProxy.client.newCommentCreated = function () {
-                console.log('a new comment was created by another client');
+                // fire event to be caught by redliner
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("remote-new-comment-created", true, false, {});
+                // Dispatch the event.
+                window.dispatchEvent(event);
+
             };
-            redlinerNetworkProxy.client.newCommentSaved = function () {
-                console.log('a new comment was saved by another client');
+            redlinerNetworkProxy.client.newCommentSaved = function (comment) {
+                // fire event to be caught by redliner
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("remote-new-comment-saved", true, false,
+                    {
+                        comment: comment
+                    });
+                // Dispatch the event.
+                window.dispatchEvent(event);
             };
             redlinerNetworkProxy.client.commentEditStart = function () {
                 console.log('a comment is being edited by another client');
@@ -99,7 +111,12 @@ if (!Array.prototype.findIndex) {
             }, false);
             self.ownMap._container.addEventListener('new-comment-saved', function (e) {
                 console.log('notifying server of new comment saved');
-                redlinerNetworkProxy.server.newCommentSaved(title);
+                var comment = e.detail;
+                var payload = {
+                    comment: comment,
+                    mapTitle: title
+                }
+                redlinerNetworkProxy.server.newCommentSaved(payload);
             }, false);
             self.ownMap._container.addEventListener('comment-edit-start', function (e) {
                 console.log('notifying server of a comment now being edited');

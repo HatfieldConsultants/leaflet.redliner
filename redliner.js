@@ -240,18 +240,24 @@ if (!Array.prototype.findIndex) {
                 self.editComment(comment, image);
             }
 
+            console.log(comment.coords);
+
             if (isNew) {
-                try {
-                    var event = new Event('new-comment-saved');
-                }
-                catch (err) {
-                    var event = document.createEvent("CustomEvent");
-                    event.initCustomEvent("new-comment-saved", true, false, { detail: {} });
-                }
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("new-comment-saved", true, false, {
+                    name: comment.name,
+                    id: comment.id,
+                    centre: comment.coords,
+                    drawing: {
+                        dataUrl: canvasDrawing,
+                        bounds: self.ownMap.getBounds()
+                    },
+                    initialZoom: comment.initialZoom
+                });
                 // Dispatch the event.
                 self.ownMap._container.dispatchEvent(event);
 
-            } else {
+            } else if (!options.textSave) {
                 var event = document.createEvent("CustomEvent");
                 event.initCustomEvent("comment-edit-end", true, false, comment);
                 // Dispatch the event.
@@ -516,9 +522,13 @@ if (!Array.prototype.findIndex) {
                 comment.id = loadedComment.id;
                 comment.name = loadedComment.name;
                 comment.initialZoom = loadedComment.initialZoom;
+                comment.coords = loadedComment.centre;
 
                 // load sketch
-                var newImage = L.imageOverlay(loadedComment.drawing.dataUrl, [loadedComment.drawing.bounds.southWest, loadedComment.drawing.bounds.northEast]);
+                var newImage = L.imageOverlay(loadedComment.drawing.dataUrl, [loadedComment.drawing.bounds._southWest, loadedComment.drawing.bounds._northEast]);
+
+                console.log(loadedComment.drawing.bounds);
+
                 newImage.addTo(comment);
                 newImage.layerType = 'drawing';
 
@@ -554,6 +564,7 @@ if (!Array.prototype.findIndex) {
 
                     });
                 }
+                console.log(comment);
 
                 comment.addTo(self.root.ownMap);
 
@@ -568,13 +579,8 @@ if (!Array.prototype.findIndex) {
                 // updating a comment
             } else {
                 self.list.push(comment);
-                try {
-                    var event = new Event('new-comment-created');
-                }
-                catch (err) {
-                    var event = document.createEvent("CustomEvent");
-                    event.initCustomEvent("new-comment-created", true, false, { detail: {} });
-                }
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("new-comment-created", true, false, { detail: {} });
                 // Dispatch the event.
                 self.root.ownMap._container.dispatchEvent(event);
 
@@ -1176,10 +1182,18 @@ if (!Array.prototype.findIndex) {
             }, false);
 
             // listen for events emitted by Network module
-            self.root.ownMap._container.addEventListener('remote-new-comment-created', function (e) {
+            window.addEventListener('remote-new-comment-created', function (e) {
                 console.log('new comment created by another client');
             }, false);
 
+            window.addEventListener('remote-new-comment-saved', function (e) {
+                var comment = e.detail.comment;
+                console.log('new comment saved by another client');
+                console.log(comment);
+                // load comment
+
+                self.root.Comments.newComment(comment);
+            }, false);
             // etc ....
 
             console.log('listeners set');
@@ -1281,19 +1295,19 @@ if (!Array.prototype.findIndex) {
             var commentPanel = {
                 type: "document-list",
                 position: "bottom",
-                responsiveRules: function(map) {
-                        var mapSize = map.getSize();
-                        if (mapSize.x >= mapSize.y) {
-                            var rules = {
-                                position: "bottom",
-                            }
-                            return rules;s
-                        } else if (mapSize.y > mapSize.x) {
-                            var rules = {
-                                position: "top",
-                            }
-                            return rules;
+                responsiveRules: function (map) {
+                    var mapSize = map.getSize();
+                    if (mapSize.x >= mapSize.y) {
+                        var rules = {
+                            position: "bottom",
                         }
+                        return rules; s
+                    } else if (mapSize.y > mapSize.x) {
+                        var rules = {
+                            position: "top",
+                        }
+                        return rules;
+                    }
                 },
                 title: "Comments",
                 toggleHide: true,
@@ -1302,72 +1316,73 @@ if (!Array.prototype.findIndex) {
                 documentSource: self.root.Comments.list,
                 documentActions: [
                 	{
-                		displayName: "View",
-                		name: "view",
-                		action: function(comment) {
-                			console.log("view comment");
-							self.root.Comments.list.forEach(function(list_comment) {
-								list_comment.removeFrom(self.root.ownMap);
-							});
+                	    displayName: "View",
+                	    name: "view",
+                	    action: function (comment) {
+                	        console.log("view comment");
+                	        self.root.Comments.list.forEach(function (list_comment) {
+                	            list_comment.removeFrom(self.root.ownMap);
+                	        });
 
-							comment.addTo(self.root.ownMap);
+                	        comment.addTo(self.root.ownMap);
 
 
-                			self.root.ownMap.setView(comment.coords, comment.initialZoom);
-                		}
+                	        self.root.ownMap.setView(comment.coords, comment.initialZoom);
+                	        console.log(comment.coords, comment.initialZoom);
+                	    }
                 	},
                     {
                         displayName: "Edit",
                         name: "edit",
-                        action: function(comment) {
-                        	console.log("edit comment");
+                        action: function (comment) {
+                            console.log("edit comment");
 
-    	                    self.root.ownMap.dragging.disable();
-		                    self.root.ownMap.touchZoom.disable();
-		                    self.root.ownMap.doubleClickZoom.disable();
-		                    self.root.ownMap.scrollWheelZoom.disable();
-		                    self.root.ownMap.boxZoom.disable();
-		                    self.root.ownMap.keyboard.disable();
-		                    if (self.root.ownMap.tap) {
-		                        self.root.ownMap.tap.disable();
-		                    }
-		                    oldMouseStyle = document.getElementById('map').style.cursor;
-		                    document.getElementById('map').style.cursor = 'default';
+                            self.root.ownMap.dragging.disable();
+                            self.root.ownMap.touchZoom.disable();
+                            self.root.ownMap.doubleClickZoom.disable();
+                            self.root.ownMap.scrollWheelZoom.disable();
+                            self.root.ownMap.boxZoom.disable();
+                            self.root.ownMap.keyboard.disable();
+                            if (self.root.ownMap.tap) {
+                                self.root.ownMap.tap.disable();
+                            }
+                            oldMouseStyle = document.getElementById('map').style.cursor;
+                            document.getElementById('map').style.cursor = 'default';
 
-                        	var image;
+                            var image;
 
-							self.root.Comments.list.forEach(function(list_comment) {
-								list_comment.removeFrom(self.root.ownMap);
-							});
+                            self.root.Comments.list.forEach(function (list_comment) {
+                                list_comment.removeFrom(self.root.ownMap);
+                            });
 
-                        	comment.getLayers().forEach(function(layer) {
-                    			if (layer.layerType == "drawing") {
-                    				image = layer;
-                    			}
-                        	});
+                            comment.getLayers().forEach(function (layer) {
+                                if (layer.layerType == "drawing") {
+                                    image = layer;
+                                }
+                            });
 
-                        	var onAdd = function() {
-	        	                try {
-				                    var event1 = new Event('show-redliner-drawing-tools');
-				                    var event2 = new Event('hide-redliner-comment-list');
-				                }
-				                catch (err) {
-				                    var event1 = document.createEvent("CustomEvent");
-				                    event.initCustomEvent("show-redliner-drawing-tools", true, false, { detail: {} });
-				                    var event2 = document.createEvent("CustomEvent");
-				                    event.initCustomEvent("hide-redliner-comment-list", true, false, { detail: {} });
-				                }
-				                // Dispatch the event.
-				                window.dispatchEvent(event1);
-				                window.dispatchEvent(event2);
+                            var onAdd = function () {
+                                try {
+                                    var event1 = new Event('show-redliner-drawing-tools');
+                                    var event2 = new Event('hide-redliner-comment-list');
+                                }
+                                catch (err) {
+                                    var event1 = document.createEvent("CustomEvent");
+                                    event.initCustomEvent("show-redliner-drawing-tools", true, false, { detail: {} });
+                                    var event2 = document.createEvent("CustomEvent");
+                                    event.initCustomEvent("hide-redliner-comment-list", true, false, { detail: {} });
+                                }
+                                // Dispatch the event.
+                                window.dispatchEvent(event1);
+                                window.dispatchEvent(event2);
 
-                        		self.root.editComment(comment, image);
-                        		comment.off('add', onAdd);
-                        	}
+                                self.root.editComment(comment, image);
+                                comment.off('add', onAdd);
+                            }
 
-        	                comment.on('add', onAdd);
+                            comment.on('add', onAdd);
 
-							comment.addTo(self.root.ownMap);
+                            comment.addTo(self.root.ownMap);
 
 
 
@@ -1376,8 +1391,8 @@ if (!Array.prototype.findIndex) {
                     {
                         displayName: "Delete",
                         name: "delete",
-                        action: function(document) {
-                        	console.log("delete comment");
+                        action: function (document) {
+                            console.log("delete comment");
                         }
                     }
                 ]

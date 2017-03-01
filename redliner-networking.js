@@ -68,7 +68,17 @@ if (!Array.prototype.findIndex) {
                 redlinerNetworkProxy.server.loadCommentsFromRedlinerJson(title);
             }
 
-            redlinerNetworkProxy.client.loadCommentsFromRedlinerJson = function () {
+            redlinerNetworkProxy.client.loadCommentsFromRedlinerJson = function (siteRedlinerDef) {
+                // HEHEHEHEH sneaky reuse of code
+                siteRedlinerDef.comments.forEach(function (comment) {
+                    var event = document.createEvent("CustomEvent");
+                    event.initCustomEvent("remote-new-comment-saved", true, false,
+                        {
+                            comment: comment
+                        });
+                    // Dispatch the event.
+                    window.dispatchEvent(event);
+                });
                 console.log('loaded comment data from server!');
             };
 
@@ -90,11 +100,16 @@ if (!Array.prototype.findIndex) {
                 // Dispatch the event.
                 window.dispatchEvent(event);
             };
-            redlinerNetworkProxy.client.commentEditStart = function () {
-                console.log('a comment is being edited by another client');
+            redlinerNetworkProxy.client.commentEditStart = function (comment) {
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("remote-comment-edit-start", true, false, comment);
+                window.dispatchEvent(event);
+
             };
-            redlinerNetworkProxy.client.commentEditEnd = function () {
-                console.log('a comment is no longer being edited by another client');
+            redlinerNetworkProxy.client.commentEditEnd = function (comment) {
+                var event = document.createEvent("CustomEvent");
+                event.initCustomEvent("remote-comment-edit-end", true, false, comment);
+                window.dispatchEvent(event);
             };
 
             /*
@@ -120,21 +135,28 @@ if (!Array.prototype.findIndex) {
             }, false);
             self.ownMap._container.addEventListener('comment-edit-start', function (e) {
                 console.log('notifying server of a comment now being edited');
-                redlinerNetworkProxy.server.commentEditStart(title);
+                var comment = e.detail;
+                var payload = {
+                    title: title,
+                    comment: comment
+                };
+                redlinerNetworkProxy.server.commentEditStart(payload);
             }, false);
             self.ownMap._container.addEventListener('comment-edit-end', function (e) {
+                var comment = e.detail;
+                var payload = {
+                    title: title,
+                    comment: comment
+                };
                 console.log('notifying server of a comment no longer being edited');
-                redlinerNetworkProxy.server.commentEditEnd(title);
+                redlinerNetworkProxy.server.commentEditEnd(payload);
             }, false);
 
             $.connection.hub.start().done(function () {
                 console.log('registering connection');
                 redlinerNetworkProxy.server.registerConnection(title);
             });
-
-
         },
-
     };
 
     // return your plugin when you are done

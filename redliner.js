@@ -218,6 +218,41 @@ if (!Array.prototype.findIndex) {
                         mergedDrawingLayer = L.imageOverlay(mergedDrawing, [newSouthWest, newNorthEast]);
                         comment.addLayer(mergedDrawingLayer);
                         mergedDrawingLayer.layerType = 'drawing';
+
+                        if (options && !options.textSave) {
+                            var event = document.createEvent("CustomEvent");
+                            var sendComment = {
+                                id: comment.id,
+                                name: comment.name,
+                                center: comment.coords,
+                                drawing: {
+                                    dataUrl: mergedDrawing,
+                                    bounds: {
+                                        _southWest: newSouthWest,
+                                        _northEast: newNorthEast
+                                    },
+                                },
+                                initialZoom: comment.initialZoom,
+                                textAnnotations: []
+                            }
+
+                            if (comment.textLayerGroup) {
+                                comment.textLayerGroup.getLayers().forEach(function (layer) {
+                                    var textNote = {
+                                        id: layer.textId,
+                                        textVal: layer.textVal,
+                                        latlng: layer._latlng
+                                    };
+
+                                    sendComment.textAnnotations.push(textNote);
+                                });
+                            }
+
+                            event.initCustomEvent("comment-edit-end", true, false, sendComment);
+                            // Dispatch the event.
+                            self.ownMap._container.dispatchEvent(event);
+                        }
+
                     };
 
                     oldImageToCanvas.src = oldDrawing._url;
@@ -240,14 +275,12 @@ if (!Array.prototype.findIndex) {
                 self.editComment(comment, image);
             }
 
-            console.log(comment.coords);
-
             if (isNew) {
                 var event = document.createEvent("CustomEvent");
                 event.initCustomEvent("new-comment-saved", true, false, {
                     name: comment.name,
                     id: comment.id,
-                    centre: comment.coords,
+                    center: comment.coords,
                     drawing: {
                         dataUrl: canvasDrawing,
                         bounds: self.ownMap.getBounds()
@@ -257,11 +290,6 @@ if (!Array.prototype.findIndex) {
                 // Dispatch the event.
                 self.ownMap._container.dispatchEvent(event);
 
-            } else if (!options.textSave) {
-                var event = document.createEvent("CustomEvent");
-                event.initCustomEvent("comment-edit-end", true, false, comment);
-                // Dispatch the event.
-                self.ownMap._container.dispatchEvent(event);
             }
 
             return comment;
@@ -302,7 +330,11 @@ if (!Array.prototype.findIndex) {
             }
 
             var event = document.createEvent("CustomEvent");
-            event.initCustomEvent("comment-edit-start", true, false, comment);
+            var sendComment = {
+                id: comment.id,
+                name: comment.name
+            }
+            event.initCustomEvent("comment-edit-start", true, false, sendComment);
             // Dispatch the event.
             self.ownMap._container.dispatchEvent(event);
 
@@ -517,25 +549,27 @@ if (!Array.prototype.findIndex) {
             comment.initialZoom = self.root.ownMap.getZoom();
 
             if (loadedComment) {
+                console.log(loadedComment);
+
                 // prep comment with all that tasty info
                 comment.saveState = true;
+                console.log("LOADED COMMENT ID", loadedComment.id)
                 comment.id = loadedComment.id;
                 comment.name = loadedComment.name;
                 comment.initialZoom = loadedComment.initialZoom;
-                comment.coords = loadedComment.centre;
+                comment.coords = loadedComment.center;
 
                 // load sketch
-                var newImage = L.imageOverlay(loadedComment.drawing.dataUrl, [loadedComment.drawing.bounds._southWest, loadedComment.drawing.bounds._northEast]);
-
                 console.log(loadedComment.drawing.bounds);
+                var newImage = L.imageOverlay(loadedComment.drawing.dataUrl, [loadedComment.drawing.bounds._northEast, loadedComment.drawing.bounds._southWest]);
 
                 newImage.addTo(comment);
                 newImage.layerType = 'drawing';
 
                 // load all text annotations
-                if (loadedComment.textAnnotations) {
-                    loadedComment.textAnnotations.forEach(function (layer) {
-
+                // if (loadedComment.textAnnotations) {
+                if (false) {
+                        loadedComment.textAnnotations.forEach(function (layer) {
                         var myIcon = L.divIcon({
                             className: 'text-comment-div',
                             html: '<textarea id="' + layer.textId + '" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="text-comment-input" rows="6" cols="30" maxlength="130"></textarea>'
@@ -564,8 +598,6 @@ if (!Array.prototype.findIndex) {
 
                     });
                 }
-                console.log(comment);
-
                 comment.addTo(self.root.ownMap);
 
             } else {
@@ -574,9 +606,12 @@ if (!Array.prototype.findIndex) {
                 self.editingComment = comment;
             }
 
-            if (index) {
-                self.list[index.index] = comment;
-                // updating a comment
+            if (index != null) {
+                console.log(self.list[index]);
+                self.list[index].removeFrom(self.root.ownMap);
+                self.list[index] = comment;
+                console.log(self.list[index]);
+R                // updating a comment
             } else {
                 self.list.push(comment);
                 var event = document.createEvent("CustomEvent");
@@ -1189,10 +1224,71 @@ if (!Array.prototype.findIndex) {
             window.addEventListener('remote-new-comment-saved', function (e) {
                 var comment = e.detail.comment;
                 console.log('new comment saved by another client');
-                console.log(comment);
                 // load comment
 
                 self.root.Comments.newComment(comment);
+            }, false);
+
+            window.addEventListener('remote-comment-edit-start', function (e) {
+
+                self.root.Comments.list.forEach(function (comment) {
+                    if (comment.id == e.detail.id) {
+                        fireDisableEditEvent(comment);
+                    }
+                });
+            }, false);
+
+            window.addEventListener('remote-comment-edit-end', function (e) {
+                var receivedComment = e.detail;
+
+                self.root.Comments.list.forEach(function (comment, index) {
+                    if (comment.id == receivedComment.id) {
+
+                        console.log(index);
+                        self.root.Comments.newComment(receivedComment, index);
+
+                        /*
+                        // update comment with new drawing by dropping old drawing layer and making a new one.
+                        // drop all text annotations and text images
+
+                        comment.getLayers().forEach(function (layer) {
+                            if (layer.layerType == "drawing" || layer.layerType == "textDrawing") {
+                                comment.removeLayer(layer);
+                                layer.removeFrom(map);
+                            }
+                        });
+                        // remove all text markers
+                        if (comment.textLayerGroup) {
+                            comment.textLayerGroup.getLayers().forEach(function (layer) {
+                                comment.textLayerGroup.removeLayer(layer);
+                                layer.removeFrom(map);
+                            });
+                        }
+
+                        var drawing = L.imageOverlay(receivedComment.drawing, receivedComment.bounds);
+                        drawing.layerType = 'drawing';
+                        comment.addLayer(drawing);
+
+                        console.log(receivedComment);
+
+                        receivedComment.textAnnotations.forEach(function (annotation) {
+                            var myIcon = L.divIcon({
+                                className: 'text-comment-div',
+                                html: '<textarea id="' + annotation.id + '" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="text-comment-input" rows="6" cols="30" maxlength="130"></textarea>'
+                            });
+                            var marker = L.marker(annotation.latlng, {
+                                icon: myIcon
+                            });
+                            marker.textId = annotation.id;
+                            marker.addTo(comment.textLayerGroup);
+                            marker.addTo(self.root.ownMap);
+                            marker.layerType = 'textAreaMarker';
+
+                        });
+                        */
+                        fireEnableEditEvent(comment);
+                    }
+                });
             }, false);
             // etc ....
 
@@ -1301,7 +1397,7 @@ if (!Array.prototype.findIndex) {
                         var rules = {
                             position: "bottom",
                         }
-                        return rules; s
+                        return rules;
                     } else if (mapSize.y > mapSize.x) {
                         var rules = {
                             position: "top",
@@ -1325,10 +1421,7 @@ if (!Array.prototype.findIndex) {
                 	        });
 
                 	        comment.addTo(self.root.ownMap);
-
-
                 	        self.root.ownMap.setView(comment.coords, comment.initialZoom);
-                	        console.log(comment.coords, comment.initialZoom);
                 	    }
                 	},
                     {

@@ -56,7 +56,6 @@ if (!Array.prototype.findIndex) {
             self.ownMap = map;
 
             // Add root object as 'root' for all components
-            self.ControlBar.root = self;
             self.Comments.root = self;
             self.Util.root = self;
             self.Tools.root = self;
@@ -312,6 +311,8 @@ if (!Array.prototype.findIndex) {
             canvasTransformArray = canvas.style.transform.split(/,|\(|\)|px| /);
 
             if (image) {
+                console.log(image);
+
                 var imageObj = new Image();
                 image.addTo(self.ownMap); // needed for image width and height...
                 // remember to remove the image after it is no longer needed (i.e. in imageObj.onload)
@@ -345,192 +346,6 @@ if (!Array.prototype.findIndex) {
 
     };
 
-    Redliner.ControlBar = {
-        options: {
-            position: 'right',
-        },
-
-        visible: false,
-        currentView: '',
-
-        isVisible: function () {
-            var self = this;
-            return self.visible;
-        },
-        show: function () {
-            var self = this;
-
-            self.root.currentMode = 'controlBarHome';
-
-            self.visible = true;
-
-            L.DomUtil.addClass(self._container, 'visible');
-
-            var controls = document.getElementsByClassName("leaflet-control leaflet-bar");
-            for (var i = 0; i < controls.length; i++) {
-                controls[i].style.visibility = 'hidden';
-            }
-
-            self.root.ownMap.dragging.disable();
-            self.root.ownMap.touchZoom.disable();
-            self.root.ownMap.doubleClickZoom.disable();
-            self.root.ownMap.scrollWheelZoom.disable();
-            self.root.ownMap.boxZoom.disable();
-            self.root.ownMap.keyboard.disable();
-            if (self.root.ownMap.tap) {
-                self.root.ownMap.tap.disable();
-            }
-            document.getElementById('map').style.cursor = 'default';
-
-            self.currentView = self.displayControl('home');
-
-            // on success, should return true
-            return true;
-        },
-        hide: function (e) {
-            var self = this;
-
-            self.root.currentMode = 'map';
-
-            self.visible = false;
-
-            L.DomUtil.removeClass(self._container, 'visible');
-            var controls = document.getElementsByClassName("leaflet-control leaflet-bar");
-            for (var i = 0; i < controls.length; i++) {
-                controls[i].style.visibility = 'visible';
-            }
-            if (e) {
-                L.DomEvent.stopPropagation(e);
-            }
-            self.root.ownMap.dragging.enable();
-            self.root.ownMap.touchZoom.enable();
-            self.root.ownMap.doubleClickZoom.enable();
-            self.root.ownMap.scrollWheelZoom.enable();
-            self.root.ownMap.boxZoom.enable();
-            self.root.ownMap.keyboard.enable();
-            if (self.root.ownMap.tap) {
-                self.root.ownMap.tap.enable();
-            }
-            document.getElementById('map').style.cursor = 'grab';
-            // on success, should return true
-            return true;
-        },
-        toggle: function () {
-            var self = this;
-
-            var toggleSuccess = self.isVisible() ? self.hide() : self.show();
-
-            return toggleSuccess;
-        },
-
-        _handleTransitionEvent: function (e) {
-            var self = this;
-            //if (e.propertyName == 'left' || e.propertyName == 'right' ||e.propertyName == 'bottom' || e.propertyName == 'top')
-            //self.fire(self.ControlBar.isVisible() ? 'shown' : 'hidden');
-        },
-
-        displayControl: function (mode, comment) {
-            var self = this;
-            // clear the display
-            L.DomUtil.empty(self._container);
-
-            switch (mode) {
-                case 'home':
-                    self.homeView();
-                    break;
-                case 'drawing':
-                    self.drawingView(comment);
-                    break;
-                default:
-            }
-
-            return mode;
-            //
-        },
-
-        homeView: function () {
-            var self = this;
-
-            var homeView = L.DomUtil.create('div', 'controlbar-view controlbar-home', self._container);
-            var close = this._closeButton = L.DomUtil.create('a', 'close', homeView);
-            close.innerHTML = '&times;';
-            close.onclick = function () {
-                self.hide();
-            };
-            var br = L.DomUtil.create('br', '', homeView);
-            var newCommentButton = L.DomUtil.create('a', 'new-comment', homeView);
-            newCommentButton.innerHTML = "New Comment";
-            newCommentButton.onclick = function () {
-                return self.startNewComment();
-            };
-
-            var commentListDiv = L.DomUtil.create('div', 'comments-div', homeView);
-
-            if (self.root.Comments.list.length > 0) {
-                var commentList = L.DomUtil.create('ul', 'collection', commentListDiv);
-                self.root.Comments.list.forEach(function (comment) {
-                    var commentItem = L.DomUtil.create('li', 'collection-item', commentList);
-                    var commentName = L.DomUtil.create('span', '', commentItem);
-                    commentName.innerHTML = comment.name;
-
-                    // add view button later
-
-                    var commentEdit = L.DomUtil.create('a', 'edit-button', commentItem);
-
-                    var image;
-                    comment.getLayers().forEach(function (layer) {
-                        if (layer.layerType == 'drawing') {
-                            image = layer;
-                        }
-                    });
-
-                    commentEdit.innerHTML = "EDIT";
-                    commentEdit.onclick = function () {
-                        return self.editComment(comment, image);
-                    };
-                });
-            }
-        },
-
-        drawingView: function (comment) {
-            var self = this;
-            var drawingView = L.DomUtil.create('div', 'controlbar-view controlbar-home', self._container);
-            var close = this._closeButton = L.DomUtil.create('a', 'close', drawingView);
-            close.innerHTML = '&times;';
-            close.onclick = function () {
-                self.saveDrawing(comment, { closeSave: true });
-            };
-            var br = L.DomUtil.create('br', '', drawingView);
-
-            var toolbox = L.DomUtil.create('div', 'toolbox', drawingView);
-        },
-
-        startNewComment: function () {
-            var self = this;
-
-            // create new comment
-            var newComment = self.root.Comments.newComment();
-
-            // trigger drawing mode
-            self.root.startDrawingMode(newComment);
-
-            return newComment;
-        },
-
-        cancelDrawing: function (commentId) {
-            var self = this;
-            var commentIndex = self.root.Comments.list.findIndex(function (comment) {
-                return comment.id === commentId;
-            });
-            var comment = self.root.Comments.list[commentIndex];
-            if (!comment.saveState) {
-                self.root.Comments.list.pop();
-            }
-            self.root.stopDrawingMode();
-            return true;
-        }
-    };
-
     Redliner.Comments = {
         list: [],
         editingComment: '',
@@ -549,18 +364,18 @@ if (!Array.prototype.findIndex) {
             comment.initialZoom = self.root.ownMap.getZoom();
 
             if (loadedComment) {
-                console.log(loadedComment);
+                //console.log(loadedComment);
 
                 // prep comment with all that tasty info
                 comment.saveState = true;
-                console.log("LOADED COMMENT ID", loadedComment.id)
+                //console.log("LOADED COMMENT ID", loadedComment.id)
                 comment.id = loadedComment.id;
                 comment.name = loadedComment.name;
                 comment.initialZoom = loadedComment.initialZoom;
-                comment.coords = loadedComment.center;
+                comment.coords = L.latLng(loadedComment.center);
 
                 // load sketch
-                console.log(loadedComment.drawing.bounds);
+                //console.log(loadedComment.drawing.bounds);
                 var newImage = L.imageOverlay(loadedComment.drawing.dataUrl, [loadedComment.drawing.bounds._northEast, loadedComment.drawing.bounds._southWest]);
 
                 newImage.addTo(comment);
@@ -607,11 +422,11 @@ if (!Array.prototype.findIndex) {
             }
 
             if (index != null) {
-                console.log(self.list[index]);
+                //console.log(self.list[index]);
                 self.list[index].removeFrom(self.root.ownMap);
                 self.list[index] = comment;
-                console.log(self.list[index]);
-R                // updating a comment
+                //console.log(self.list[index]);
+                // updating a comment
             } else {
                 self.list.push(comment);
                 var event = document.createEvent("CustomEvent");
@@ -808,7 +623,7 @@ R                // updating a comment
                     if (self.root.Tools.currentTool == 'pen') {
                         self.stroke = true;
                     }
-                    console.log('touch start');
+                    //console.log('touch start');
                 });
 
                 canvas.addEventListener('mousemove', function (e) {
@@ -826,7 +641,7 @@ R                // updating a comment
                         self.mouseY = pos.y;
                         self.drawLine(context, self.mouseX, self.mouseY, 3);
                     }
-                    console.log('touchmove');
+                    //console.log('touchmove');
                 }, false);
 
                 window.addEventListener('mouseup', function (e) {
@@ -844,7 +659,7 @@ R                // updating a comment
                         self.lastX = -1;
                         self.lastY = -1;
                     }
-                    console.log('touch end');
+                    //console.log('touch end');
                 }, false);
             }
         },
@@ -1194,22 +1009,22 @@ R                // updating a comment
             }
 
             self.root.ownMap._container.addEventListener('new-comment-created', function (e) {
-                console.log('new comment created');
+                //console.log('new comment created');
                 fireUpdateCommentListViewEvent();
             }, false);
             self.root.ownMap._container.addEventListener('new-comment-saved', function (e) {
-                console.log('new comment saved');
+                //console.log('new comment saved');
                 fireUpdateCommentListViewEvent();
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-start', function (e) {
-                console.log('started editing a comment');
+                //console.log('started editing a comment');
                 fireUpdateCommentListViewEvent();
                 fireShowToolsEvent();
                 var comment = e.detail;
                 fireDisableEditEvent(comment);
             }, false);
             self.root.ownMap._container.addEventListener('comment-edit-end', function (e) {
-                console.log('finished editing a comment');
+                //console.log('finished editing a comment');
                 fireUpdateCommentListViewEvent();
                 fireHideToolsEvent();
                 var comment = e.detail;
@@ -1218,12 +1033,12 @@ R                // updating a comment
 
             // listen for events emitted by Network module
             window.addEventListener('remote-new-comment-created', function (e) {
-                console.log('new comment created by another client');
+                //console.log('new comment created by another client');
             }, false);
 
             window.addEventListener('remote-new-comment-saved', function (e) {
                 var comment = e.detail.comment;
-                console.log('new comment saved by another client');
+                //console.log('new comment saved by another client');
                 // load comment
 
                 self.root.Comments.newComment(comment);
@@ -1240,11 +1055,11 @@ R                // updating a comment
 
             window.addEventListener('remote-comment-edit-end', function (e) {
                 var receivedComment = e.detail;
+                console.log(receivedComment, "RECEIVED COMMENT");
 
                 self.root.Comments.list.forEach(function (comment, index) {
                     if (comment.id == receivedComment.id) {
 
-                        console.log(index);
                         self.root.Comments.newComment(receivedComment, index);
 
                         /*
@@ -1287,12 +1102,13 @@ R                // updating a comment
                         });
                         */
                         fireEnableEditEvent(comment);
+                        fireUpdateCommentListViewEvent();
                     }
                 });
             }, false);
             // etc ....
 
-            console.log('listeners set');
+            //console.log('listeners set');
         }
     };
 
@@ -1313,7 +1129,6 @@ R                // updating a comment
                 toggleHide: "button",
                 title: "Drawing Tools",
                 panelName: "redliner-drawing-tools",
-                toggleIcon: "assets/pencil.png",
                 toggleOnCallback: function () {
                     self.root.startNewComment();
                     self.root.ownMap.dragging.disable();
@@ -1415,7 +1230,7 @@ R                // updating a comment
                 	    displayName: "View",
                 	    name: "view",
                 	    action: function (comment) {
-                	        console.log("view comment");
+                	        //console.log("view comment");
                 	        self.root.Comments.list.forEach(function (list_comment) {
                 	            list_comment.removeFrom(self.root.ownMap);
                 	        });
@@ -1428,7 +1243,7 @@ R                // updating a comment
                         displayName: "Edit",
                         name: "edit",
                         action: function (comment) {
-                            console.log("edit comment");
+                            //console.log("edit comment");
 
                             self.root.ownMap.dragging.disable();
                             self.root.ownMap.touchZoom.disable();
@@ -1454,30 +1269,16 @@ R                // updating a comment
                                 }
                             });
 
-                            var onAdd = function () {
-                                try {
-                                    var event1 = new Event('show-redliner-drawing-tools');
-                                    var event2 = new Event('hide-redliner-comment-list');
-                                }
-                                catch (err) {
-                                    var event1 = document.createEvent("CustomEvent");
-                                    event.initCustomEvent("show-redliner-drawing-tools", true, false, { detail: {} });
-                                    var event2 = document.createEvent("CustomEvent");
-                                    event.initCustomEvent("hide-redliner-comment-list", true, false, { detail: {} });
-                                }
-                                // Dispatch the event.
-                                window.dispatchEvent(event1);
-                                window.dispatchEvent(event2);
+                            var event1 = document.createEvent("CustomEvent");
+                            event1.initCustomEvent("show-redliner-drawing-tools", true, false, { detail: {} });
+                            var event2 = document.createEvent("CustomEvent");
+                            event2.initCustomEvent("hide-redliner-comment-list", true, false, { detail: {} });
 
-                                self.root.editComment(comment, image);
-                                comment.off('add', onAdd);
-                            }
+                            // Dispatch the event.
+                            window.dispatchEvent(event1);
+                            window.dispatchEvent(event2);
 
-                            comment.on('add', onAdd);
-
-                            comment.addTo(self.root.ownMap);
-
-
+                            self.root.editComment(comment, image);
 
                         }
                     },

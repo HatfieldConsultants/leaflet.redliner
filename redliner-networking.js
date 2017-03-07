@@ -60,11 +60,11 @@ if (!Array.prototype.findIndex) {
             var redlinerNetworkProxy = $.connection.redlinerNetwork;
 
             redlinerNetworkProxy.client.newClientConnection = function () {
-                console.log('a new client has connected to this site!');
+                //console.log('a new client has connected to this site!');
             };
 
             redlinerNetworkProxy.client.acknowledgeConnection = function () {
-                console.log('requesting comment info');
+                //console.log('requesting comment info');
                 redlinerNetworkProxy.server.loadCommentsFromRedlinerJson(title);
             }
 
@@ -79,7 +79,7 @@ if (!Array.prototype.findIndex) {
                     // Dispatch the event.
                     window.dispatchEvent(event);
                 });
-                console.log('loaded comment data from server!');
+                //console.log('loaded comment data from server!');
             };
 
             redlinerNetworkProxy.client.newCommentCreated = function () {
@@ -109,6 +109,7 @@ if (!Array.prototype.findIndex) {
             redlinerNetworkProxy.client.commentEditEnd = function (comment) {
                 var event = document.createEvent("CustomEvent");
                 event.initCustomEvent("remote-comment-edit-end", true, false, comment);
+                //console.log('NORMIES GET OUUUTTTTT');
                 window.dispatchEvent(event);
             };
 
@@ -121,11 +122,11 @@ if (!Array.prototype.findIndex) {
             */
 
             self.ownMap._container.addEventListener('new-comment-created', function (e) {
-                console.log('notifying server of new comment created');
+                //console.log('notifying server of new comment created');
                 redlinerNetworkProxy.server.newCommentCreated(title);
             }, false);
             self.ownMap._container.addEventListener('new-comment-saved', function (e) {
-                console.log('notifying server of new comment saved');
+                //console.log('notifying server of new comment saved');
                 var comment = e.detail;
                 var payload = {
                     comment: comment,
@@ -134,7 +135,7 @@ if (!Array.prototype.findIndex) {
                 redlinerNetworkProxy.server.newCommentSaved(payload);
             }, false);
             self.ownMap._container.addEventListener('comment-edit-start', function (e) {
-                console.log('notifying server of a comment now being edited');
+                //console.log('notifying server of a comment now being edited');
                 var comment = e.detail;
                 var payload = {
                     title: title,
@@ -148,12 +149,12 @@ if (!Array.prototype.findIndex) {
                     title: title,
                     comment: comment
                 };
-                console.log('notifying server of a comment no longer being edited');
+                //console.log('notifying server of a comment no longer being edited');
                 redlinerNetworkProxy.server.commentEditEnd(payload);
             }, false);
 
             $.connection.hub.start().done(function () {
-                console.log('registering connection');
+                //console.log('registering connection');
                 redlinerNetworkProxy.server.registerConnection(title);
             });
         },

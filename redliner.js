@@ -1041,7 +1041,7 @@ if (!Array.prototype.findIndex) {
                 //console.log('new comment saved by another client');
                 // load comment
 
-                self.root.Comments.newComment(comment);
+                self.root.Comments.newComment(comment).removeFrom(self.root.ownMap);
             }, false);
 
             window.addEventListener('remote-comment-edit-start', function (e) {
@@ -1060,7 +1060,7 @@ if (!Array.prototype.findIndex) {
                 self.root.Comments.list.forEach(function (comment, index) {
                     if (comment.id == receivedComment.id) {
 
-                        self.root.Comments.newComment(receivedComment, index);
+                        self.root.Comments.newComment(receivedComment, index).removeFrom(self.root.ownMap);
 
                         /*
                         // update comment with new drawing by dropping old drawing layer and making a new one.

@@ -199,19 +199,19 @@
 }
 
 .red-pen {
-    background: url(assets/red-circle.png) no-repeat;
+    background: url(../assets/red-circle.png) no-repeat;
 }
 .yellow-pen {
-    background: url(assets/yellow-circle.png) no-repeat;
+    background: url(../assets/yellow-circle.png) no-repeat;
 }
 .black-pen {
-    background: url(assets/black-circle.png) no-repeat;
+    background: url(../assets/black-circle.png) no-repeat;
 }
 .eraser {
-    background: url(assets/eraser.png) no-repeat;
+    background: url(../assets/eraser.png) no-repeat;
 }
 .text {
-    background: url(assets/text.png) no-repeat;
+    background: url(../assets/text.png) no-repeat;
 }
 
 .view {

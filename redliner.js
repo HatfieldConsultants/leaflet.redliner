@@ -809,7 +809,6 @@ if (!Array.prototype.findIndex) {
                                 image = layer;
                             }
                         });
-
                         self.root.editComment(comment, image, { addText: true, textAreaMarker: marker });
                         self.root.Tools.setCurrentTool('text', { listeners: false });
                         textBox = document.getElementById(id);

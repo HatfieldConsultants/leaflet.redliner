@@ -107,7 +107,7 @@ if (!Array.prototype.findIndex) {
             var self = this;
 
             // turn off all drawing tools
-            self.Tools.off();
+            // self.Tools.off();
 
             self.Comments.editingComment = '';
 
@@ -116,7 +116,7 @@ if (!Array.prototype.findIndex) {
                 comment.removeFrom(map);
             });
 
-            self.drawingCanvas.removeFrom(map);
+            // self.drawingCanvas.removeFrom(map);
             delete self.drawingCanvas;
         },
 
@@ -139,7 +139,12 @@ if (!Array.prototype.findIndex) {
 
             // prompt for title saving...
             if (!comment.saveState) {
-                comment.name = prompt("Please name your note", "Note") || "Untitled Note";
+                Date.prototype.getDateText = function () {
+                    var months = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
+                    return months[this.getMonth()] + " " + this.getDate() + " " + this.getFullYear();
+                }
+                // comment.name = prompt("Please name your comment", "Comments made on " + (new Date()).getDateText()) || "Untitled Note";
+                comment.name = "Comments made on " + (new Date()).getDateText();
             }
 
             if (options && options.textSave) {
